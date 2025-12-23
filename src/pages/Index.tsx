@@ -1,34 +1,30 @@
-import { motion } from "framer-motion";
-import SwapInterface from "@/components/SwapInterface";
-import AnimatedBackground from "@/components/AnimatedBackground";
-import Navbar from "@/components/Navbar";
+import { SwapInterface } from '@/components/SwapInterface';
+import { PegasusAnimation } from '@/components/PegasusAnimation';
+import { Navigation } from '@/components/Navigation';
+import { motion } from 'framer-motion';
 
 const Index = () => {
   return (
-    <div className="min-h-screen">
-      <AnimatedBackground />
-      <Navbar />
-      
-      <main className="pt-24 pb-12 px-4">
-        <div className="container mx-auto">
-          {/* Hero */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-12"
-          >
-            <h1 className="text-4xl md:text-6xl font-bold mb-4">
-              <span className="gradient-text">Pegasus</span> Swap
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              The fastest way to swap your Solana tokens. Secure, reliable, and lightning fast.
-            </p>
-          </motion.div>
+    <div className="min-h-screen relative overflow-hidden">
+      <PegasusAnimation />
+      <Navigation />
 
-          {/* Swap Interface */}
+      <div className="relative z-10 container mx-auto px-2 sm:px-4 pt-24 md:pt-32 pb-8">
+        {/* Main Swap Interface */}
+        <div className="flex justify-center items-center px-2 sm:px-0">
           <SwapInterface />
         </div>
-      </main>
+
+        {/* Footer */}
+        <motion.footer
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="mt-12 sm:mt-16 text-center text-xs sm:text-sm text-muted-foreground"
+        >
+          <p>Built with ⚡ on Solana</p>
+        </motion.footer>
+      </div>
     </div>
   );
 };
