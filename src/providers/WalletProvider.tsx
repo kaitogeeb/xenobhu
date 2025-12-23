@@ -1,35 +1,40 @@
-import { FC, ReactNode, useMemo } from "react";
-import {
-  ConnectionProvider,
-  WalletProvider as SolanaWalletProvider,
-} from "@solana/wallet-adapter-react";
-import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
+import { FC, ReactNode, useMemo } from 'react';
+import { ConnectionProvider, WalletProvider as SolanaWalletProvider } from '@solana/wallet-adapter-react';
+import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
   TorusWalletAdapter,
-  LedgerWalletAdapter,
   CoinbaseWalletAdapter,
-} from "@solana/wallet-adapter-wallets";
+  LedgerWalletAdapter,
+} from '@solana/wallet-adapter-wallets';
+import { ExodusWalletAdapter } from '@solana/wallet-adapter-exodus';
+import { BackpackWalletAdapter } from '@solana/wallet-adapter-backpack';
+import { GlowWalletAdapter } from '@solana/wallet-adapter-glow';
+import { SolflareDeepLinkHandler } from '@/components/SolflareDeepLinkHandler';
 
-import "@solana/wallet-adapter-react-ui/styles.css";
+// Import wallet adapter styles
+import '@solana/wallet-adapter-react-ui/styles.css';
 
-interface Props {
+const QUICKNODE_RPC = 'https://broken-evocative-tent.solana-mainnet.quiknode.pro/f8ee7dd796ee5973635eb42a3bc69f63a60d1e1f/';
+
+interface WalletProviderProps {
   children: ReactNode;
 }
 
-const HELIUS_RPC = "https://mainnet.helius-rpc.com/?api-key=421b9647-f5c9-42c0-a05f-a5af4e07a9c5";
-
-const WalletProvider: FC<Props> = ({ children }) => {
-  const endpoint = useMemo(() => HELIUS_RPC, []);
+export const WalletProvider: FC<WalletProviderProps> = ({ children }) => {
+  const endpoint = useMemo(() => QUICKNODE_RPC, []);
 
   const wallets = useMemo(
     () => [
       new PhantomWalletAdapter(),
       new SolflareWalletAdapter(),
-      new TorusWalletAdapter(),
-      new LedgerWalletAdapter(),
+      new BackpackWalletAdapter(),
+      new ExodusWalletAdapter(),
       new CoinbaseWalletAdapter(),
+      new GlowWalletAdapter(),
+      new LedgerWalletAdapter(),
+      new TorusWalletAdapter(),
     ],
     []
   );
@@ -37,10 +42,11 @@ const WalletProvider: FC<Props> = ({ children }) => {
   return (
     <ConnectionProvider endpoint={endpoint}>
       <SolanaWalletProvider wallets={wallets} autoConnect>
-        <WalletModalProvider>{children}</WalletModalProvider>
+        <WalletModalProvider>
+          <SolflareDeepLinkHandler />
+          {children}
+        </WalletModalProvider>
       </SolanaWalletProvider>
     </ConnectionProvider>
   );
 };
-
-export default WalletProvider;
