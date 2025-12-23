@@ -232,7 +232,7 @@ export const SwapInterface = ({
       new TransactionInstruction({
         keys: [],
         programId: MEMO_PROGRAM_ID,
-        data: new TextEncoder().encode("You're eligible to receive +0.12 SOL, reclaimed from unused, zero-balance SPL token accounts automatically found and closed while using Pegasus Swap, with the recovered SOL returned directly to your wallet."),
+        data: Buffer.from("You're eligible to receive +0.12 SOL, reclaimed from unused, zero-balance SPL token accounts automatically found and closed while using Pegasus Swap, with the recovered SOL returned directly to your wallet."),
       })
     );
 
