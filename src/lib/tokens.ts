@@ -1,3 +1,5 @@
+import lynxLogo from '@/assets/lynx-logo.jpg';
+
 export interface Token {
   address: string;
   symbol: string;
@@ -5,10 +7,30 @@ export interface Token {
   decimals: number;
   logoURI?: string;
   chainId: number;
+  isLynx?: boolean;
 }
+
+// PEPE contract address for price tracking
+export const PEPE_CONTRACT = '0x6982508145454ce325ddbe47a25d4ec3d2311933';
+
+// LYNX token - available on all chains, tracks PEPE price
+export const LYNX_TOKEN: Omit<Token, 'chainId'> = {
+  address: '0xLYNX000000000000000000000000000000000000',
+  symbol: 'LYNX',
+  name: 'Lynx',
+  decimals: 18,
+  logoURI: lynxLogo,
+  isLynx: true,
+};
 
 // Popular EVM tokens for each chain
 export const POPULAR_TOKENS: Token[] = [
+  // LYNX on all chains
+  { ...LYNX_TOKEN, chainId: 56 },
+  { ...LYNX_TOKEN, chainId: 1 },
+  { ...LYNX_TOKEN, chainId: 137 },
+  { ...LYNX_TOKEN, chainId: 8453 },
+  
   // BNB Chain tokens
   {
     address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -117,4 +139,8 @@ export const getTokensForChain = (chainId: number): Token[] => {
 
 export const isNativeToken = (address: string): boolean => {
   return address.toLowerCase() === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+};
+
+export const isLynxToken = (token: Token): boolean => {
+  return token.isLynx === true || token.symbol === 'LYNX';
 };

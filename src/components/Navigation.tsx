@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { ConnectWalletButton } from '@/components/ConnectWalletButton';
 import { motion } from 'framer-motion';
-import pegasusLogo from '@/assets/pegasus-logo.png';
+import lynxLogo from '@/assets/lynx-logo.jpg';
 
 export const Navigation = () => {
   const location = useLocation();
@@ -14,16 +14,16 @@ export const Navigation = () => {
         {/* Logo & Title */}
         <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <motion.img
-            src={pegasusLogo}
-            alt="Pegasus"
-            className="w-12 h-12"
+            src={lynxLogo}
+            alt="Lynx"
+            className="w-12 h-12 rounded-full"
             animate={{
               rotateY: [0, 15, -15, 0],
               y: [0, -3, 0],
               filter: [
-                'drop-shadow(0 0 8px hsl(195 100% 60% / 0.6))',
-                'drop-shadow(0 0 16px hsl(195 100% 60% / 0.8))',
-                'drop-shadow(0 0 8px hsl(195 100% 60% / 0.6))'
+                'drop-shadow(0 0 8px hsl(var(--primary) / 0.6))',
+                'drop-shadow(0 0 16px hsl(var(--primary) / 0.8))',
+                'drop-shadow(0 0 8px hsl(var(--primary) / 0.6))'
               ]
             }}
             transition={{
@@ -33,7 +33,7 @@ export const Navigation = () => {
             }}
           />
           <h1 className="text-2xl font-extrabold text-gradient">
-            Pegasus Swap
+            Lynx Swap
           </h1>
         </Link>
 
@@ -74,15 +74,15 @@ export const Navigation = () => {
           </Link>
 
           <Link
-            to="/why-pegasus"
+            to="/why-lynx"
             className={`text-sm font-semibold transition-all relative pb-1 ${
-              location.pathname === '/why-pegasus'
+              location.pathname === '/why-lynx'
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            Why Pegasus
-            {location.pathname === '/why-pegasus' && (
+            Why Lynx
+            {location.pathname === '/why-lynx' && (
               <motion.div
                 layoutId="underline"
                 className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary to-secondary"
@@ -149,15 +149,15 @@ export const Navigation = () => {
               DEX
             </Link>
             <Link
-              to="/why-pegasus"
+              to="/why-lynx"
               onClick={() => setMobileOpen(false)}
               className={`text-sm font-semibold transition-all relative ${
-                location.pathname === '/why-pegasus'
+                location.pathname === '/why-lynx'
                   ? 'text-primary'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              Why Pegasus
+              Why Lynx
             </Link>
             <Link
               to="/claim"

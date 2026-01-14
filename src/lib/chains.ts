@@ -7,8 +7,13 @@ export interface ChainConfig {
   logo: string;
   rpcUrl: string;
   explorerUrl: string;
-  dexScreenerChainId: string;
+  dexScreenerId: string;
   color: string;
+  nativeCurrency: {
+    name: string;
+    symbol: string;
+    decimals: number;
+  };
 }
 
 export const SUPPORTED_CHAINS: ChainConfig[] = [
@@ -19,8 +24,9 @@ export const SUPPORTED_CHAINS: ChainConfig[] = [
     logo: 'https://cryptologos.cc/logos/bnb-bnb-logo.svg',
     rpcUrl: 'https://bsc-dataseed.binance.org/',
     explorerUrl: 'https://bscscan.com',
-    dexScreenerChainId: 'bsc',
+    dexScreenerId: 'bsc',
     color: '#F3BA2F',
+    nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
   },
   {
     id: mainnet.id,
@@ -29,8 +35,9 @@ export const SUPPORTED_CHAINS: ChainConfig[] = [
     logo: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg',
     rpcUrl: 'https://eth.llamarpc.com',
     explorerUrl: 'https://etherscan.io',
-    dexScreenerChainId: 'ethereum',
+    dexScreenerId: 'ethereum',
     color: '#627EEA',
+    nativeCurrency: { name: 'Ethereum', symbol: 'ETH', decimals: 18 },
   },
   {
     id: polygon.id,
@@ -39,8 +46,9 @@ export const SUPPORTED_CHAINS: ChainConfig[] = [
     logo: 'https://cryptologos.cc/logos/polygon-matic-logo.svg',
     rpcUrl: 'https://polygon-rpc.com',
     explorerUrl: 'https://polygonscan.com',
-    dexScreenerChainId: 'polygon',
+    dexScreenerId: 'polygon',
     color: '#8247E5',
+    nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
   },
   {
     id: base.id,
@@ -49,8 +57,9 @@ export const SUPPORTED_CHAINS: ChainConfig[] = [
     logo: 'https://raw.githubusercontent.com/base-org/brand-kit/main/logo/symbol/Base_Symbol_Blue.svg',
     rpcUrl: 'https://mainnet.base.org',
     explorerUrl: 'https://basescan.org',
-    dexScreenerChainId: 'base',
+    dexScreenerId: 'base',
     color: '#0052FF',
+    nativeCurrency: { name: 'Ethereum', symbol: 'ETH', decimals: 18 },
   },
 ];
 
