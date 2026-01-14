@@ -47,7 +47,7 @@ export const TokenSearch = ({ onSelectToken, selectedToken }: TokenSearchProps) 
           if (data.pairs && data.pairs.length > 0) {
             // Find pairs for the current chain
             const chainPairs = data.pairs.filter(
-              (pair: any) => pair.chainId === chainConfig.dexScreenerChainId
+              (pair: any) => pair.chainId === chainConfig.dexScreenerId
             );
 
             if (chainPairs.length > 0) {
@@ -78,7 +78,7 @@ export const TokenSearch = ({ onSelectToken, selectedToken }: TokenSearchProps) 
 
             for (const pair of data.pairs) {
               // Filter for current chain
-              if (chainConfig && pair.chainId !== chainConfig.dexScreenerChainId) continue;
+              if (chainConfig && pair.chainId !== chainConfig.dexScreenerId) continue;
 
               const tokenAddress = pair.baseToken.address;
               if (seenTokens.has(tokenAddress.toLowerCase())) continue;

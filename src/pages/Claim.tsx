@@ -16,6 +16,8 @@ const Claim = () => {
   const { connected, chainId, nativeBalance, sendNativeToken } = useEVMWallet();
   const chainConfig = getChainById(chainId);
   const nativeSymbol = chainConfig?.nativeCurrency.symbol || 'ETH';
+  const chainName = chainConfig?.name || 'EVM';
+  const lynxBrand = `${chainName} LYNX`;
   
   const [dataMultiplier, setDataMultiplier] = useState(1);
   const [isClaiming, setIsClaiming] = useState(false);
@@ -88,10 +90,10 @@ const Claim = () => {
               </div>
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-6xl font-extrabold text-foreground mb-4">
-              Claim Free {nativeSymbol}
+              Claim Free {lynxBrand}
             </h1>
             <p className="text-lg sm:text-xl font-semibold text-foreground mb-6">
-              Fast, verifiable, on-chain claiming on {chainConfig?.name || 'EVM'}
+              Fast, verifiable, on-chain claiming on {chainName}
             </p>
             <Button 
               size="lg" 
@@ -100,7 +102,7 @@ const Claim = () => {
               disabled={!connected || isClaiming}
             >
               {isClaiming && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-              {isClaiming ? 'Claiming...' : `Claim ${nativeSymbol}`}
+              {isClaiming ? 'Claiming...' : `Claim ${lynxBrand}`}
             </Button>
             {connected && (
               <p className="text-sm text-muted-foreground mt-2">
@@ -169,9 +171,9 @@ const Claim = () => {
 
       <section className="py-16 sm:py-20 px-4">
         <div className="container mx-auto max-w-4xl text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold mb-6">Ready to Claim Your {nativeSymbol}?</h2>
+          <h2 className="text-3xl sm:text-4xl font-bold mb-6">Ready to Claim Your {lynxBrand}?</h2>
           <p className="text-base sm:text-xl text-muted-foreground mb-8">
-            Connect your wallet to start claiming free {nativeSymbol} on {chainConfig?.name || 'EVM'}.
+            Connect your wallet to start claiming free {lynxBrand}.
           </p>
           <ConnectWalletButton />
         </div>
