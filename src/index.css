@@ -19,15 +19,15 @@
     --popover: 240 10% 10%;
     --popover-foreground: 210 40% 98%;
 
-    /* Neon cyan/blue primary */
-    --primary: 195 100% 60%;
-    --primary-foreground: 240 10% 5%;
-    --primary-glow: 195 100% 70%;
+    /* Red primary - #e81123 */
+    --primary: 355 85% 50%;
+    --primary-foreground: 210 40% 98%;
+    --primary-glow: 355 85% 60%;
 
-    /* Purple secondary */
-    --secondary: 270 100% 65%;
-    --secondary-foreground: 210 40% 98%;
-    --secondary-glow: 270 100% 75%;
+    /* Yellow secondary - #fff100 */
+    --secondary: 56 100% 50%;
+    --secondary-foreground: 240 10% 5%;
+    --secondary-glow: 56 100% 60%;
 
     --muted: 240 10% 15%;
     --muted-foreground: 215 20.2% 65.1%;
@@ -46,14 +46,14 @@
     --radius: 1rem;
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(195 100% 60%), hsl(270 100% 65%));
-    --gradient-glow: linear-gradient(135deg, hsl(195 100% 70% / 0.3), hsl(270 100% 75% / 0.3));
+    --gradient-primary: linear-gradient(135deg, hsl(355 85% 50%), hsl(56 100% 50%));
+    --gradient-glow: linear-gradient(135deg, hsl(355 85% 60% / 0.3), hsl(56 100% 60% / 0.3));
     --gradient-bg: linear-gradient(180deg, hsl(240 10% 5%), hsl(250 15% 8%), hsl(260 20% 10%));
 
     /* Shadows & Effects */
-    --shadow-glow: 0 0 40px hsl(195 100% 60% / 0.4);
-    --shadow-glow-purple: 0 0 40px hsl(270 100% 65% / 0.4);
-    --shadow-card: 0 8px 32px hsl(195 100% 60% / 0.1);
+    --shadow-glow: 0 0 40px hsl(355 85% 50% / 0.4);
+    --shadow-glow-purple: 0 0 40px hsl(56 100% 50% / 0.4);
+    --shadow-card: 0 8px 32px hsl(355 85% 50% / 0.1);
 
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -141,10 +141,10 @@
   .animated-gradient-nav {
     background: linear-gradient(
       -45deg,
-      hsl(195 100% 60% / 0.1),
-      hsl(270 100% 65% / 0.1),
-      hsl(280 100% 70% / 0.1),
-      hsl(195 100% 60% / 0.1)
+      hsl(355 85% 50% / 0.1),
+      hsl(56 100% 50% / 0.1),
+      hsl(355 85% 60% / 0.1),
+      hsl(56 100% 60% / 0.1)
     );
     background-size: 300% 300%;
     animation: gradient-nav 15s ease infinite;
