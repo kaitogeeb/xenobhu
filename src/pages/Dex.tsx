@@ -1,36 +1,37 @@
 import { useState } from 'react';
 import { Navigation } from '@/components/Navigation';
 import { SwapInterface } from '@/components/SwapInterface';
-import { PegasusAnimation } from '@/components/PegasusAnimation';
+import { LynxAnimation } from '@/components/LynxAnimation';
 import { motion } from 'framer-motion';
 import { TrendingUp } from 'lucide-react';
-
-interface Token {
-  address: string;
-  symbol: string;
-  name: string;
-  decimals: number;
-  logoURI?: string;
-}
+import { useEVMWallet } from '@/hooks/useEVMWallet';
+import { getChainById } from '@/lib/chains';
+import { Token, getTokensForChain } from '@/lib/tokens';
 
 const Dex = () => {
-  const defaultFromToken: Token = {
-    address: 'So11111111111111111111111111111111111111112',
-    symbol: 'SOL',
-    name: 'Solana',
-    decimals: 9,
-    logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png'
+  const { chainId } = useEVMWallet();
+  const chainConfig = getChainById(chainId);
+  const chainTokens = getTokensForChain(chainId);
+
+  const defaultFromToken: Token = chainTokens[0] || {
+    address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
+    symbol: 'ETH',
+    name: 'Ethereum',
+    decimals: 18,
+    logoURI: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg',
+    chainId: 1,
   };
 
-  const defaultToToken: Token = {
-    address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  const defaultToToken: Token = chainTokens[1] || {
+    address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
     symbol: 'USDC',
     name: 'USD Coin',
     decimals: 6,
-    logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png'
+    logoURI: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.svg',
+    chainId: 1,
   };
 
-  const [dexScreenerToken, setDexScreenerToken] = useState('So11111111111111111111111111111111111111112');
+  const [dexScreenerToken, setDexScreenerToken] = useState(defaultFromToken.address);
 
   const handleFromTokenChange = (token: Token) => {
     setDexScreenerToken(token.address);
@@ -38,7 +39,7 @@ const Dex = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      <PegasusAnimation />
+      <LynxAnimation />
       <Navigation />
 
       <div className="relative z-10 pt-20 md:pt-24 pb-8">
@@ -53,7 +54,7 @@ const Dex = () => {
               <h1 className="text-3xl md:text-4xl font-extrabold text-gradient">DEX Trading</h1>
             </div>
             <p className="text-sm md:text-base text-muted-foreground">
-              Trade and analyze tokens in real-time
+              Trade and analyze tokens on {chainConfig?.name || 'EVM'} in real-time
             </p>
           </motion.div>
 
@@ -81,7 +82,7 @@ const Dex = () => {
                 <div className="relative glass-card rounded-2xl overflow-hidden h-[360px] sm:h-[400px] lg:h-[600px]">
                   <iframe
                     key={dexScreenerToken}
-                    src={`https://dexscreener.com/solana/${dexScreenerToken}?embed=1&theme=dark&trades=0&info=0`}
+                    src={`https://dexscreener.com/${chainConfig?.dexScreenerId || 'ethereum'}/${dexScreenerToken}?embed=1&theme=dark&trades=0&info=0`}
                     className="w-full h-full border-0"
                     title="DEXScreener Chart"
                   />

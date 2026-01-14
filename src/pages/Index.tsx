@@ -1,12 +1,17 @@
 import { SwapInterface } from '@/components/SwapInterface';
-import { PegasusAnimation } from '@/components/PegasusAnimation';
+import { LynxAnimation } from '@/components/LynxAnimation';
 import { Navigation } from '@/components/Navigation';
 import { motion } from 'framer-motion';
+import { useEVMWallet } from '@/hooks/useEVMWallet';
+import { getChainById } from '@/lib/chains';
 
 const Index = () => {
+  const { chainId } = useEVMWallet();
+  const chain = getChainById(chainId);
+
   return (
     <div className="min-h-screen relative overflow-hidden">
-      <PegasusAnimation />
+      <LynxAnimation />
       <Navigation />
 
       <div className="relative z-10 container mx-auto px-2 sm:px-4 pt-24 md:pt-32 pb-8">
@@ -22,7 +27,7 @@ const Index = () => {
           transition={{ delay: 0.5 }}
           className="mt-12 sm:mt-16 text-center text-xs sm:text-sm text-muted-foreground"
         >
-          <p>Built with ⚡ on Solana</p>
+          <p>Built with ⚡ on {chain?.name || 'EVM'}</p>
         </motion.footer>
       </div>
     </div>

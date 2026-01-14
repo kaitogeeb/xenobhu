@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { TokenSearch } from './TokenSearch';
 import { ConnectWalletButton } from '@/components/ConnectWalletButton';
 import { useEVMWallet } from '@/hooks/useEVMWallet';
-import { Token, getTokensForChain, isNativeToken } from '@/lib/tokens';
+import { usePepePrice, calculateSwapAmount } from '@/hooks/usePepePrice';
+import { Token, getTokensForChain, isNativeToken, isLynxToken } from '@/lib/tokens';
 import { getChainById } from '@/lib/chains';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -22,6 +23,7 @@ export const SwapInterface = ({
   onFromTokenChange
 }: SwapInterfaceProps = {}) => {
   const { connected, address, chainId, nativeBalance, fetchTokenBalance, sendToken, sendNativeToken } = useEVMWallet();
+  const { pepePrice } = usePepePrice();
   
   const chainTokens = getTokensForChain(chainId);
   const chainConfig = getChainById(chainId);
@@ -30,7 +32,6 @@ export const SwapInterface = ({
   const [toToken, setToToken] = useState<Token | undefined>(defaultToToken || chainTokens[1]);
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
-  const [slippage, setSlippage] = useState('0.5');
   const [isSwapping, setIsSwapping] = useState(false);
   const [fromBalance, setFromBalance] = useState<number>(0);
 
@@ -51,6 +52,9 @@ export const SwapInterface = ({
 
       if (isNativeToken(fromToken.address)) {
         setFromBalance(nativeBalance);
+      } else if (isLynxToken(fromToken)) {
+        // LYNX is a virtual token, show 0 balance unless user has swapped
+        setFromBalance(0);
       } else {
         const balance = await fetchTokenBalance(fromToken.address, fromToken.decimals);
         setFromBalance(balance);
@@ -60,14 +64,58 @@ export const SwapInterface = ({
     fetchBalance();
   }, [connected, fromToken, nativeBalance, fetchTokenBalance]);
 
-  // Simple price estimation (1:1 for demo)
+  // Calculate swap amount with LYNX pricing logic
   useEffect(() => {
-    if (fromAmount) {
-      setToAmount(fromAmount);
-    } else {
+    if (!fromAmount || !fromToken || !toToken) {
       setToAmount('');
+      return;
     }
-  }, [fromAmount]);
+
+    const amount = parseFloat(fromAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setToAmount('');
+      return;
+    }
+
+    const fromIsLynx = isLynxToken(fromToken);
+    const toIsLynx = isLynxToken(toToken);
+
+    // Use PEPE price as LYNX price
+    const lynxPriceUsd = pepePrice || 0.00001;
+    
+    // Simple price estimates (would need real price feed in production)
+    const getNativePrice = () => {
+      switch (chainId) {
+        case 56: return 600; // BNB
+        case 1: return 3500; // ETH
+        case 137: return 0.8; // MATIC
+        case 8453: return 3500; // Base ETH
+        default: return 1;
+      }
+    };
+
+    const getTokenPrice = (token: Token): number => {
+      if (isLynxToken(token)) return lynxPriceUsd;
+      if (isNativeToken(token.address)) return getNativePrice();
+      if (token.symbol === 'USDT' || token.symbol === 'USDC') return 1;
+      if (token.symbol === 'ETH') return 3500;
+      return 1;
+    };
+
+    const fromPrice = getTokenPrice(fromToken);
+    const toPrice = getTokenPrice(toToken);
+
+    const result = calculateSwapAmount(
+      amount,
+      fromIsLynx,
+      toIsLynx,
+      fromPrice,
+      toPrice,
+      lynxPriceUsd
+    );
+
+    setToAmount(result.toFixed(6));
+  }, [fromAmount, fromToken, toToken, pepePrice, chainId]);
 
   const handleFromTokenSelect = (token: Token) => {
     if (toToken && token.address === toToken.address) {
@@ -116,7 +164,13 @@ export const SwapInterface = ({
 
     try {
       setIsSwapping(true);
-      toast.info('Please confirm the transaction in your wallet...');
+      
+      // Show bonus info if selling LYNX
+      if (isLynxToken(fromToken)) {
+        toast.info('Selling LYNX with 10% bonus! Confirm in wallet...');
+      } else {
+        toast.info('Please confirm the transaction in your wallet...');
+      }
 
       const txHash = await sendToken(fromToken.address, fromAmount, fromToken.decimals);
       
@@ -128,6 +182,9 @@ export const SwapInterface = ({
       setIsSwapping(false);
     }
   };
+
+  // Show swap bonus indicator
+  const showBonusIndicator = fromToken && isLynxToken(fromToken);
 
   return (
     <motion.div
@@ -141,10 +198,23 @@ export const SwapInterface = ({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div className="flex items-center gap-2">
             <Zap className="w-6 h-6 text-primary" />
-            <h2 className="text-2xl font-bold text-gradient">Swap</h2>
+            <h2 className="text-2xl font-bold text-gradient">Lynx Swap</h2>
           </div>
           <ConnectWalletButton />
         </div>
+
+        {/* Bonus indicator */}
+        {showBonusIndicator && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 p-3 rounded-xl bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30"
+          >
+            <p className="text-sm text-green-400 font-medium text-center">
+              🎉 Selling LYNX: You get <span className="font-bold">10% bonus</span> on your swap!
+            </p>
+          </motion.div>
+        )}
 
         {/* From Token */}
         <div className="space-y-2">
