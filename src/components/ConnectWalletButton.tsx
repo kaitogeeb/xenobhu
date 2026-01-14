@@ -1,121 +1,164 @@
-import { FC, useState, useEffect } from "react";
-import { useWallet } from "@solana/wallet-adapter-react";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { useIsMobile } from "@/hooks/use-mobile";
-
-const TARGET_URL = "https://pegswap.xyz/";
+import { FC, useState } from 'react';
+import { usePrivy } from '@privy-io/react-auth';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useEVMWallet } from '@/hooks/useEVMWallet';
+import { SUPPORTED_CHAINS, getChainById } from '@/lib/chains';
+import { ChevronDown, Wallet, LogOut, Check } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 
 export const ConnectWalletButton: FC = () => {
-  const { connected, select, wallets } = useWallet();
-  const isMobile = useIsMobile();
-  const [open, setOpen] = useState(false);
-  const [isMobileUserAgent, setIsMobileUserAgent] = useState(false);
+  const { login, authenticated } = usePrivy();
+  const { connected, address, chainId, nativeBalance, logout, switchChain } = useEVMWallet();
+  const [chainSelectorOpen, setChainSelectorOpen] = useState(false);
+  const [isSwitching, setIsSwitching] = useState(false);
 
-  useEffect(() => {
-    const checkMobile = () => {
-      const ua = navigator.userAgent || navigator.vendor || (window as any).opera;
-      return /android|ipad|iphone|ipod/i.test(ua);
-    };
-    setIsMobileUserAgent(checkMobile());
-  }, []);
+  const currentChain = getChainById(chainId);
 
-  // If already connected, show the standard multi button
-  if (connected) {
-    return <WalletMultiButton />;
-  }
-
-  const handleWalletClick = (walletName: string) => {
-    // 1. Find the adapter
-    const wallet = wallets.find((w) => w.adapter.name === walletName);
-    const adapter = wallet?.adapter;
-    const isInstalled = wallet?.readyState === "Installed";
-
-    // 2. If the wallet is installed (Desktop or Mobile Dapp Browser), connect normally.
-    if (isInstalled && adapter) {
-      select(adapter.name);
-      setOpen(false);
+  const handleChainSelect = async (newChainId: number) => {
+    if (newChainId === chainId) {
+      setChainSelectorOpen(false);
       return;
     }
 
-    // 3. If NOT installed and user is on Mobile, use Deep Link to open the App.
-    if (isMobile || isMobileUserAgent) {
-      const encodedUrl = encodeURIComponent(TARGET_URL);
-      let deepLink = "";
-
-      switch (walletName) {
-        case 'Phantom':
-          deepLink = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`;
-          break;
-        case 'Solflare':
-          deepLink = `https://solflare.com/ul/v1/browse/${encodedUrl}?ref=${encodedUrl}`;
-          break;
-        case 'Backpack':
-          deepLink = `https://backpack.app/ul/browse/${encodedUrl}`;
-          break;
-        case 'Exodus':
-          deepLink = `exodus://dapp/${encodedUrl}`;
-          break;
-        case 'Coinbase Wallet':
-          deepLink = `https://go.cb-w.com/dapp?cb_url=${encodedUrl}`;
-          break;
-        case 'Glow':
-          deepLink = `https://glow.app/ul/browse/${encodedUrl}`;
-          break;
-        default:
-          break;
-      }
-
-      if (deepLink) {
-        window.location.href = deepLink;
-        return;
-      }
-    }
-
-    // 4. Fallback for Desktop (not installed) -> Select to trigger "Install Wallet" prompt
-    if (adapter) {
-      select(adapter.name);
-      setOpen(false);
+    setIsSwitching(true);
+    try {
+      await switchChain(newChainId);
+      setChainSelectorOpen(false);
+    } catch (error) {
+      console.error('Failed to switch chain:', error);
+    } finally {
+      setIsSwitching(false);
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="default" className="wallet-adapter-button-trigger">
+  const formatAddress = (addr: string) => {
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
+
+  if (!connected || !authenticated) {
+    return (
+      <>
+        <Button
+          onClick={() => setChainSelectorOpen(true)}
+          className="bg-gradient-to-r from-primary to-secondary text-white font-semibold rounded-xl h-10 px-4 hover:scale-105 transition-all shadow-lg hover:shadow-primary/50"
+        >
+          <Wallet className="w-4 h-4 mr-2" />
           Connect Wallet
         </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <div className="flex flex-col gap-4 py-4">
-          <h2 className="text-lg font-semibold text-center mb-4">Connect a Wallet</h2>
-          <div className="flex flex-col gap-2">
-            {wallets.map((w) => (
-              <Button
-                key={w.adapter.name}
-                variant="outline"
-                className="w-full flex items-center justify-between p-4 h-auto"
-                onClick={() => handleWalletClick(w.adapter.name)}
-              >
-                <div className="flex items-center gap-3">
-                  <img
-                    src={w.adapter.icon}
-                    alt={w.adapter.name}
-                    className="w-6 h-6"
-                  />
-                  <span className="font-medium">{w.adapter.name}</span>
-                </div>
-                {w.readyState === "Installed" && (
-                  <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded">
-                    Detected
-                  </span>
-                )}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+
+        <Dialog open={chainSelectorOpen} onOpenChange={setChainSelectorOpen}>
+          <DialogContent className="glass-card border-white/10 max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-center">Select Network</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-3 py-4">
+              {SUPPORTED_CHAINS.map((chain) => (
+                <button
+                  key={chain.id}
+                  onClick={async () => {
+                    setChainSelectorOpen(false);
+                    await login();
+                  }}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl glass-card hover:bg-muted/50 transition-all hover:scale-[1.02] border border-white/5"
+                >
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: `${chain.color}20` }}
+                  >
+                    <img
+                      src={chain.logo}
+                      alt={chain.name}
+                      className="w-8 h-8"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <div className="font-semibold text-foreground">{chain.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      Connect with {chain.symbol}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      {/* Chain Selector */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            className="glass-card border-white/10 h-10 px-3 gap-2"
+            disabled={isSwitching}
+          >
+            {currentChain && (
+              <img
+                src={currentChain.logo}
+                alt={currentChain.name}
+                className="w-5 h-5"
+              />
+            )}
+            <span className="hidden sm:inline">{currentChain?.name || 'Unknown'}</span>
+            <ChevronDown className="w-4 h-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="glass-card border-white/10 bg-card z-50">
+          {SUPPORTED_CHAINS.map((chain) => (
+            <DropdownMenuItem
+              key={chain.id}
+              onClick={() => handleChainSelect(chain.id)}
+              className="flex items-center gap-3 cursor-pointer"
+            >
+              <img src={chain.logo} alt={chain.name} className="w-5 h-5" />
+              <span>{chain.name}</span>
+              {chain.id === chainId && <Check className="w-4 h-4 ml-auto text-primary" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Wallet Info */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button className="bg-gradient-to-r from-primary to-secondary text-white font-semibold rounded-xl h-10 px-4">
+            <span className="hidden sm:inline mr-2">
+              {nativeBalance.toFixed(4)} {currentChain?.symbol}
+            </span>
+            <span>{formatAddress(address || '')}</span>
+            <ChevronDown className="w-4 h-4 ml-2" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="glass-card border-white/10 bg-card z-50">
+          <DropdownMenuItem className="flex items-center gap-2">
+            <Wallet className="w-4 h-4" />
+            <span className="font-mono text-sm">{formatAddress(address || '')}</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => logout()}
+            className="flex items-center gap-2 text-destructive cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Disconnect</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 };

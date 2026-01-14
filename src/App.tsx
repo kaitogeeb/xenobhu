@@ -3,8 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { WalletProvider } from "./providers/WalletProvider";
-import { SolflareDeepLinkHandler } from "@/components/SolflareDeepLinkHandler";
+import { PrivyProvider } from "./providers/PrivyProvider";
 import Index from "./pages/Index";
 import Dex from "./pages/Dex";
 import WhyPegasus from "./pages/WhyPegasus";
@@ -15,8 +14,7 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <WalletProvider>
-      <SolflareDeepLinkHandler />
+    <PrivyProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -26,12 +24,11 @@ const App = () => (
             <Route path="/dex" element={<Dex />} />
             <Route path="/why-pegasus" element={<WhyPegasus />} />
             <Route path="/claim" element={<Claim />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
-    </WalletProvider>
+    </PrivyProvider>
   </QueryClientProvider>
 );
 
