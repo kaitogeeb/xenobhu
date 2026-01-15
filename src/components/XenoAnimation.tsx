@@ -1,8 +1,41 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
+// Color themes that alternate
+const themes = {
+  purple: {
+    wave1: { start: 'hsl(25 100% 55%)', mid: 'hsl(35 100% 50%)', end: 'hsl(25 100% 55%)' },
+    wave2: { start: 'hsl(258 100% 68%)', mid: 'hsl(229 55% 46%)', end: 'hsl(258 100% 68%)' },
+    wave3: { start: 'hsl(229 55% 46%)', mid: 'hsl(183 100% 50%)', end: 'hsl(229 55% 46%)' },
+    wave4: { start: 'hsl(183 100% 50%)', mid: 'hsl(258 100% 68%)', end: 'hsl(183 100% 50%)' },
+    orb1: 'linear-gradient(135deg, hsl(258 100% 68% / 0.25), hsl(229 55% 46% / 0.15))',
+    orb2: 'linear-gradient(135deg, hsl(183 100% 50% / 0.2), hsl(258 100% 68% / 0.1))',
+    orb3: 'linear-gradient(135deg, hsl(25 100% 55% / 0.2), hsl(258 100% 68% / 0.15))',
+    dots: [
+      { main: '258 100% 68%', glow: '258 100% 68%' },
+      { main: '183 100% 50%', glow: '183 100% 50%' },
+      { main: '25 100% 55%', glow: '25 100% 55%' },
+    ]
+  },
+  redYellow: {
+    wave1: { start: 'hsl(25 100% 55%)', mid: 'hsl(35 100% 50%)', end: 'hsl(25 100% 55%)' },
+    wave2: { start: 'hsl(355 85% 50%)', mid: 'hsl(25 100% 50%)', end: 'hsl(355 85% 50%)' },
+    wave3: { start: 'hsl(56 100% 50%)', mid: 'hsl(355 85% 50%)', end: 'hsl(56 100% 50%)' },
+    wave4: { start: 'hsl(355 85% 60%)', mid: 'hsl(56 100% 50%)', end: 'hsl(355 85% 60%)' },
+    orb1: 'linear-gradient(135deg, hsl(355 85% 50% / 0.25), hsl(25 100% 55% / 0.15))',
+    orb2: 'linear-gradient(135deg, hsl(56 100% 50% / 0.2), hsl(355 85% 50% / 0.1))',
+    orb3: 'linear-gradient(135deg, hsl(25 100% 55% / 0.2), hsl(355 85% 50% / 0.15))',
+    dots: [
+      { main: '355 85% 50%', glow: '355 85% 50%' },
+      { main: '56 100% 50%', glow: '56 100% 50%' },
+      { main: '25 100% 55%', glow: '25 100% 55%' },
+    ]
+  }
+};
+
 export const XenoAnimation = () => {
   const [dimensions, setDimensions] = useState({ width: 1000, height: 800 });
+  const [currentTheme, setCurrentTheme] = useState<'purple' | 'redYellow'>('purple');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -16,6 +49,17 @@ export const XenoAnimation = () => {
       return () => window.removeEventListener('resize', handleResize);
     }
   }, []);
+
+  // Alternate theme every 2 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTheme(prev => prev === 'purple' ? 'redYellow' : 'purple');
+    }, 2000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  const theme = themes[currentTheme];
 
   // Generate wave path - waves at bottom of screen
   const generateWavePath = (offset: number, amplitude: number, frequency: number, baseY: number) => {
@@ -35,17 +79,8 @@ export const XenoAnimation = () => {
     initialY: Math.random() * dimensions.height,
     duration: 8 + Math.random() * 6,
     delay: Math.random() * 3,
-    colorIndex: i % 3, // 0: purple, 1: cyan, 2: orange
+    colorIndex: i % 3,
   }));
-
-  const getColorFromIndex = (index: number) => {
-    switch (index) {
-      case 0: return { main: '258 100% 68%', glow: '258 100% 68%' }; // Purple
-      case 1: return { main: '183 100% 50%', glow: '183 100% 50%' }; // Cyan
-      case 2: return { main: '25 100% 55%', glow: '25 100% 55%' }; // Orange
-      default: return { main: '258 100% 68%', glow: '258 100% 68%' };
-    }
-  };
 
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -54,27 +89,87 @@ export const XenoAnimation = () => {
         <defs>
           {/* Orange wave - bottom layer */}
           <linearGradient id="waveGradientOrange" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="hsl(25 100% 55%)" stopOpacity="0.25" />
-            <stop offset="50%" stopColor="hsl(35 100% 50%)" stopOpacity="0.2" />
-            <stop offset="100%" stopColor="hsl(25 100% 55%)" stopOpacity="0.25" />
+            <motion.stop 
+              offset="0%" 
+              animate={{ stopColor: theme.wave1.start }}
+              transition={{ duration: 1 }}
+              stopOpacity="0.25" 
+            />
+            <motion.stop 
+              offset="50%" 
+              animate={{ stopColor: theme.wave1.mid }}
+              transition={{ duration: 1 }}
+              stopOpacity="0.2" 
+            />
+            <motion.stop 
+              offset="100%" 
+              animate={{ stopColor: theme.wave1.end }}
+              transition={{ duration: 1 }}
+              stopOpacity="0.25" 
+            />
           </linearGradient>
-          {/* Purple wave - middle layer */}
+          {/* Purple/Red wave - middle layer */}
           <linearGradient id="waveGradientPurple" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="hsl(258 100% 68%)" stopOpacity="0.2" />
-            <stop offset="50%" stopColor="hsl(229 55% 46%)" stopOpacity="0.15" />
-            <stop offset="100%" stopColor="hsl(258 100% 68%)" stopOpacity="0.2" />
+            <motion.stop 
+              offset="0%" 
+              animate={{ stopColor: theme.wave2.start }}
+              transition={{ duration: 1 }}
+              stopOpacity="0.2" 
+            />
+            <motion.stop 
+              offset="50%" 
+              animate={{ stopColor: theme.wave2.mid }}
+              transition={{ duration: 1 }}
+              stopOpacity="0.15" 
+            />
+            <motion.stop 
+              offset="100%" 
+              animate={{ stopColor: theme.wave2.end }}
+              transition={{ duration: 1 }}
+              stopOpacity="0.2" 
+            />
           </linearGradient>
-          {/* Cyan wave - top layer */}
-          <linearGradient id="waveGradientCyan" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="hsl(183 100% 50%)" stopOpacity="0.15" />
-            <stop offset="50%" stopColor="hsl(258 100% 68%)" stopOpacity="0.1" />
-            <stop offset="100%" stopColor="hsl(183 100% 50%)" stopOpacity="0.15" />
-          </linearGradient>
-          {/* Deep blue wave */}
+          {/* Deep blue/Yellow wave */}
           <linearGradient id="waveGradientBlue" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="hsl(229 55% 46%)" stopOpacity="0.18" />
-            <stop offset="50%" stopColor="hsl(183 100% 50%)" stopOpacity="0.12" />
-            <stop offset="100%" stopColor="hsl(229 55% 46%)" stopOpacity="0.18" />
+            <motion.stop 
+              offset="0%" 
+              animate={{ stopColor: theme.wave3.start }}
+              transition={{ duration: 1 }}
+              stopOpacity="0.18" 
+            />
+            <motion.stop 
+              offset="50%" 
+              animate={{ stopColor: theme.wave3.mid }}
+              transition={{ duration: 1 }}
+              stopOpacity="0.12" 
+            />
+            <motion.stop 
+              offset="100%" 
+              animate={{ stopColor: theme.wave3.end }}
+              transition={{ duration: 1 }}
+              stopOpacity="0.18" 
+            />
+          </linearGradient>
+          {/* Cyan/Red wave */}
+          <linearGradient id="waveGradientCyan" x1="0%" y1="0%" x2="100%" y2="0%">
+            <motion.stop 
+              offset="0%" 
+              animate={{ stopColor: theme.wave4.start }}
+              transition={{ duration: 1 }}
+              stopOpacity="0.15" 
+            />
+            <motion.stop 
+              offset="50%" 
+              animate={{ stopColor: theme.wave4.mid }}
+              transition={{ duration: 1 }}
+              stopOpacity="0.1" 
+            />
+            <motion.stop 
+              offset="100%" 
+              animate={{ stopColor: theme.wave4.end }}
+              transition={{ duration: 1 }}
+              stopOpacity="0.15" 
+            />
           </linearGradient>
         </defs>
         
@@ -154,9 +249,9 @@ export const XenoAnimation = () => {
         />
       </svg>
 
-      {/* Large floating dots with multi-color scheme */}
+      {/* Large floating dots with alternating colors */}
       {largeDots.map((dot) => {
-        const colors = getColorFromIndex(dot.colorIndex);
+        const colors = theme.dots[dot.colorIndex];
         return (
           <motion.div
             key={dot.id}
@@ -164,15 +259,10 @@ export const XenoAnimation = () => {
             style={{
               width: dot.size,
               height: dot.size,
-              background: `linear-gradient(135deg, hsl(${colors.main}), hsl(${colors.glow} / 0.7))`,
-              boxShadow: `0 0 ${dot.size * 2}px hsl(${colors.glow} / 0.5)`,
-            }}
-            initial={{
-              x: dot.initialX,
-              y: dot.initialY,
-              opacity: 0,
             }}
             animate={{
+              background: `linear-gradient(135deg, hsl(${colors.main}), hsl(${colors.glow} / 0.7))`,
+              boxShadow: `0 0 ${dot.size * 2}px hsl(${colors.glow} / 0.5)`,
               x: [
                 dot.initialX,
                 dot.initialX + (Math.random() - 0.5) * 200,
@@ -197,13 +287,11 @@ export const XenoAnimation = () => {
         );
       })}
 
-      {/* Glowing orbs - Purple */}
+      {/* Glowing orbs - with theme transition */}
       <motion.div
         className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full blur-3xl"
-        style={{
-          background: 'linear-gradient(135deg, hsl(258 100% 68% / 0.25), hsl(229 55% 46% / 0.15))',
-        }}
         animate={{
+          background: theme.orb1,
           scale: [1, 1.2, 1],
           opacity: [0.3, 0.5, 0.3],
         }}
@@ -214,13 +302,11 @@ export const XenoAnimation = () => {
         }}
       />
 
-      {/* Glowing orbs - Cyan */}
+      {/* Glowing orbs - Cyan/Yellow */}
       <motion.div
         className="absolute top-1/3 right-1/3 w-48 h-48 rounded-full blur-3xl"
-        style={{
-          background: 'linear-gradient(135deg, hsl(183 100% 50% / 0.2), hsl(258 100% 68% / 0.1))',
-        }}
         animate={{
+          background: theme.orb2,
           scale: [1, 1.3, 1],
           opacity: [0.2, 0.4, 0.2],
         }}
@@ -235,10 +321,8 @@ export const XenoAnimation = () => {
       {/* Glowing orbs - Orange */}
       <motion.div
         className="absolute bottom-1/4 right-1/4 w-72 h-72 rounded-full blur-3xl"
-        style={{
-          background: 'linear-gradient(135deg, hsl(25 100% 55% / 0.2), hsl(258 100% 68% / 0.15))',
-        }}
         animate={{
+          background: theme.orb3,
           scale: [1, 1.25, 1],
           opacity: [0.25, 0.45, 0.25],
         }}

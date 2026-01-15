@@ -52,14 +52,15 @@ const MarketMaking = () => {
       try {
         setLoadingGainers(true);
         
-        // Fetch from multiple EVM chains
-        const chains = ['ethereum', 'bsc', 'polygon', 'base'];
+        // Fetch trending tokens which have better logo data
+        const chains = ['ethereum', 'bsc', 'polygon', 'base', 'arbitrum', 'avalanche'];
         const allGainers: TopGainer[] = [];
         
+        // Try fetching trending pairs for better logo coverage
         for (const chain of chains) {
           try {
             const response = await fetch(
-              `https://api.dexscreener.com/latest/dex/search?q=chain:${chain}`
+              `https://api.dexscreener.com/latest/dex/tokens/trending?chain=${chain}`
             );
             const data = await response.json();
             
@@ -67,11 +68,16 @@ const MarketMaking = () => {
               for (const pair of data.pairs) {
                 const priceChange = pair.priceChange?.h24;
                 if (priceChange && priceChange >= 200) {
+                  // Try multiple sources for logo
+                  const logoUrl = pair.info?.imageUrl || 
+                    pair.baseToken?.info?.imageUrl ||
+                    `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${chain}/assets/${pair.baseToken?.address}/logo.png`;
+                  
                   allGainers.push({
                     name: pair.baseToken.name,
                     symbol: pair.baseToken.symbol,
                     priceChangePercent: priceChange,
-                    logoUrl: pair.info?.imageUrl || `https://ui-avatars.com/api/?name=${pair.baseToken.symbol}&background=random`,
+                    logoUrl: logoUrl,
                     pairAddress: pair.pairAddress,
                     chainId: pair.chainId
                   });
@@ -83,26 +89,81 @@ const MarketMaking = () => {
           }
         }
         
+        // Also try boosted tokens endpoint for more variety
+        try {
+          const boostedResponse = await fetch('https://api.dexscreener.com/token-boosts/latest/v1');
+          const boostedData = await boostedResponse.json();
+          
+          if (Array.isArray(boostedData)) {
+            for (const token of boostedData.slice(0, 30)) {
+              if (token.tokenAddress && token.chainId) {
+                // Fetch token details to get price change
+                try {
+                  const tokenResponse = await fetch(
+                    `https://api.dexscreener.com/latest/dex/tokens/${token.tokenAddress}`
+                  );
+                  const tokenData = await tokenResponse.json();
+                  
+                  if (tokenData.pairs && tokenData.pairs[0]) {
+                    const pair = tokenData.pairs[0];
+                    const priceChange = pair.priceChange?.h24 || 0;
+                    
+                    if (priceChange >= 200) {
+                      const logoUrl = pair.info?.imageUrl || 
+                        token.icon ||
+                        `https://dd.dexscreener.com/ds-data/tokens/${token.chainId}/${token.tokenAddress}.png`;
+                      
+                      allGainers.push({
+                        name: pair.baseToken?.name || token.description || 'Unknown',
+                        symbol: pair.baseToken?.symbol || 'TOKEN',
+                        priceChangePercent: priceChange,
+                        logoUrl: logoUrl,
+                        pairAddress: pair.pairAddress,
+                        chainId: pair.chainId
+                      });
+                    }
+                  }
+                } catch (e) {
+                  console.error('Error fetching token details:', e);
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching boosted tokens:', err);
+        }
+        
         // Sort by price change and take top 45
         const sortedGainers = allGainers
           .sort((a, b) => b.priceChangePercent - a.priceChangePercent)
           .slice(0, 45);
         
-        // If we don't have enough, generate some mock data
+        // If we don't have enough, generate some mock data with proper logos
         if (sortedGainers.length < 45) {
-          const mockNames = ['XENO', 'PEPE', 'DOGE', 'SHIB', 'FLOKI', 'BONK', 'WIF', 'MEME', 'TURBO', 'WOJAK'];
+          const mockTokens = [
+            { name: 'Pepe', symbol: 'PEPE', logo: 'https://dd.dexscreener.com/ds-data/tokens/ethereum/0x6982508145454ce325ddbe47a25d4ec3d2311933.png' },
+            { name: 'Shiba Inu', symbol: 'SHIB', logo: 'https://dd.dexscreener.com/ds-data/tokens/ethereum/0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce.png' },
+            { name: 'Floki Inu', symbol: 'FLOKI', logo: 'https://dd.dexscreener.com/ds-data/tokens/ethereum/0xcf0c122c6b73ff809c693db761e7baebe62b6a2e.png' },
+            { name: 'Bonk', symbol: 'BONK', logo: 'https://dd.dexscreener.com/ds-data/tokens/solana/DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263.png' },
+            { name: 'Dogecoin', symbol: 'DOGE', logo: 'https://cryptologos.cc/logos/dogecoin-doge-logo.png' },
+            { name: 'Wojak', symbol: 'WOJAK', logo: 'https://dd.dexscreener.com/ds-data/tokens/ethereum/0x5026f006b85729a8b14553fae6af249ad16c9aab.png' },
+            { name: 'Turbo', symbol: 'TURBO', logo: 'https://dd.dexscreener.com/ds-data/tokens/ethereum/0xa35923162c49cf95e6bf26623385eb431ad920d3.png' },
+            { name: 'Meme', symbol: 'MEME', logo: 'https://dd.dexscreener.com/ds-data/tokens/ethereum/0xb131f4a55907b10d1f0a50d8ab8fa09ec342cd74.png' },
+            { name: 'Brett', symbol: 'BRETT', logo: 'https://dd.dexscreener.com/ds-data/tokens/base/0x532f27101965dd16442e59d40670faf5ebb142e4.png' },
+            { name: 'Toshi', symbol: 'TOSHI', logo: 'https://dd.dexscreener.com/ds-data/tokens/base/0xac1bd2486aaf3b5c0fc3fd868558b082a531b2b4.png' },
+          ];
           const chains = ['ethereum', 'bsc', 'polygon', 'base'];
           
           while (sortedGainers.length < 45) {
-            const randomName = mockNames[Math.floor(Math.random() * mockNames.length)];
+            const mockToken = mockTokens[sortedGainers.length % mockTokens.length];
             const randomChain = chains[Math.floor(Math.random() * chains.length)];
             const randomPercent = 200 + Math.floor(Math.random() * 800);
             
             sortedGainers.push({
-              name: `${randomName} Token`,
-              symbol: `${randomName}${Math.floor(Math.random() * 100)}`,
+              name: mockToken.name,
+              symbol: mockToken.symbol + (sortedGainers.length > 10 ? Math.floor(Math.random() * 100) : ''),
               priceChangePercent: randomPercent,
-              logoUrl: `https://ui-avatars.com/api/?name=${randomName}&background=random`,
+              logoUrl: mockToken.logo,
               pairAddress: `0x${Math.random().toString(16).substring(2, 42)}`,
               chainId: randomChain
             });
@@ -217,9 +278,7 @@ const MarketMaking = () => {
             transition={{ delay: 0.3 }}
             className="mb-16"
           >
-            <h2 className="text-2xl sm:text-3xl font-bold text-center mb-8">
-              Top Gainers (200%+ in 24h)
-            </h2>
+            
             
             {loadingGainers ? (
               <div className="text-center py-12">
