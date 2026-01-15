@@ -13,25 +13,23 @@ export const Navigation = () => {
       <div className="container mx-auto px-2 sm:px-4 py-3 flex items-center justify-between">
         {/* Logo & Title */}
         <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-          <motion.img
-            src={xenoLogo}
-            alt="Xeno"
-            className="w-12 h-12 rounded-full"
+          <motion.div
+            className="relative"
             animate={{
-              rotateY: [0, 15, -15, 0],
               y: [0, -3, 0],
-              filter: [
-                'drop-shadow(0 0 8px hsl(var(--primary) / 0.6))',
-                'drop-shadow(0 0 16px hsl(var(--primary) / 0.8))',
-                'drop-shadow(0 0 8px hsl(var(--primary) / 0.6))'
-              ]
             }}
             transition={{
               duration: 3,
               repeat: Infinity,
               ease: "easeInOut"
             }}
-          />
+          >
+            <img
+              src={xenoLogo}
+              alt="Xeno"
+              className="w-12 h-12 rounded-full animate-logo-glow relative z-10"
+            />
+          </motion.div>
           <h1 className="text-2xl font-extrabold text-gradient">
             Xeno Swap
           </h1>
