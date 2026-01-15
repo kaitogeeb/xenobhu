@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Navigation } from '@/components/Navigation';
-import { LynxAnimation } from '@/components/LynxAnimation';
+import { XenoAnimation } from '@/components/XenoAnimation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Zap, Shield, BarChart3, Rocket, ExternalLink } from 'lucide-react';
@@ -90,7 +90,7 @@ const MarketMaking = () => {
         
         // If we don't have enough, generate some mock data
         if (sortedGainers.length < 45) {
-          const mockNames = ['LYNX', 'PEPE', 'DOGE', 'SHIB', 'FLOKI', 'BONK', 'WIF', 'MEME', 'TURBO', 'WOJAK'];
+          const mockNames = ['XENO', 'PEPE', 'DOGE', 'SHIB', 'FLOKI', 'BONK', 'WIF', 'MEME', 'TURBO', 'WOJAK'];
           const chains = ['ethereum', 'bsc', 'polygon', 'base'];
           
           while (sortedGainers.length < 45) {
@@ -158,7 +158,7 @@ const MarketMaking = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      <LynxAnimation />
+      <XenoAnimation />
       <Navigation />
 
       <section className="relative pt-20 sm:pt-28 md:pt-32 pb-8 px-4">

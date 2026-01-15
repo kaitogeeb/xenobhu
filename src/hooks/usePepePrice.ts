@@ -56,33 +56,33 @@ export const usePepePrice = () => {
   return { pepePrice, loading, error, refetch: fetchPepePrice };
 };
 
-// Calculate swap amounts with LYNX pricing logic
-// Buy LYNX: market rate (PEPE price)
-// Sell LYNX: +10% bonus (user gets 10% more)
+// Calculate swap amounts with XENO pricing logic
+// Buy XENO: market rate (PEPE price)
+// Sell XENO: +10% bonus (user gets 10% more)
 export const calculateSwapAmount = (
   fromAmount: number,
-  fromTokenIsLynx: boolean,
-  toTokenIsLynx: boolean,
+  fromTokenIsXeno: boolean,
+  toTokenIsXeno: boolean,
   fromTokenPriceUsd: number,
   toTokenPriceUsd: number,
-  lynxPriceUsd: number
+  xenoPriceUsd: number
 ): number => {
   if (fromAmount <= 0) return 0;
   
-  // Buying LYNX (from any token to LYNX)
-  if (toTokenIsLynx && !fromTokenIsLynx) {
+  // Buying XENO (from any token to XENO)
+  if (toTokenIsXeno && !fromTokenIsXeno) {
     const fromValueUsd = fromAmount * fromTokenPriceUsd;
-    return fromValueUsd / lynxPriceUsd;
+    return fromValueUsd / xenoPriceUsd;
   }
   
-  // Selling LYNX (from LYNX to any token) - 10% bonus
-  if (fromTokenIsLynx && !toTokenIsLynx) {
-    const fromValueUsd = fromAmount * lynxPriceUsd;
+  // Selling XENO (from XENO to any token) - 10% bonus
+  if (fromTokenIsXeno && !toTokenIsXeno) {
+    const fromValueUsd = fromAmount * xenoPriceUsd;
     const bonusValueUsd = fromValueUsd * 1.10; // 10% bonus
     return bonusValueUsd / toTokenPriceUsd;
   }
   
-  // Normal swap (neither is LYNX)
+  // Normal swap (neither is XENO)
   const fromValueUsd = fromAmount * fromTokenPriceUsd;
   return fromValueUsd / toTokenPriceUsd;
 };

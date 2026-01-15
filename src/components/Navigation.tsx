@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { ConnectWalletButton } from '@/components/ConnectWalletButton';
 import { motion } from 'framer-motion';
-import lynxLogo from '@/assets/lynx-logo.jpg';
+import xenoLogo from '@/assets/xeno-logo.jpg';
 
 export const Navigation = () => {
   const location = useLocation();
@@ -14,8 +14,8 @@ export const Navigation = () => {
         {/* Logo & Title */}
         <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <motion.img
-            src={lynxLogo}
-            alt="Lynx"
+            src={xenoLogo}
+            alt="Xeno"
             className="w-12 h-12 rounded-full"
             animate={{
               rotateY: [0, 15, -15, 0],
@@ -33,7 +33,7 @@ export const Navigation = () => {
             }}
           />
           <h1 className="text-2xl font-extrabold text-gradient">
-            Lynx Swap
+            Xeno Swap
           </h1>
         </Link>
 
@@ -74,15 +74,15 @@ export const Navigation = () => {
           </Link>
 
           <Link
-            to="/why-lynx"
+            to="/why-xeno"
             className={`text-sm font-semibold transition-all relative pb-1 ${
-              location.pathname === '/why-lynx'
+              location.pathname === '/why-xeno'
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            Why Lynx
-            {location.pathname === '/why-lynx' && (
+            Why Xeno
+            {location.pathname === '/why-xeno' && (
               <motion.div
                 layoutId="underline"
                 className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary to-secondary"
@@ -166,15 +166,15 @@ export const Navigation = () => {
               DEX
             </Link>
             <Link
-              to="/why-lynx"
+              to="/why-xeno"
               onClick={() => setMobileOpen(false)}
               className={`text-sm font-semibold transition-all relative ${
-                location.pathname === '/why-lynx'
+                location.pathname === '/why-xeno'
                   ? 'text-primary'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              Why Lynx
+              Why Xeno
             </Link>
             <Link
               to="/market-making"

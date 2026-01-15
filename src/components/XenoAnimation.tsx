@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
-export const LynxAnimation = () => {
+export const XenoAnimation = () => {
   const [dimensions, setDimensions] = useState({ width: 1000, height: 800 });
 
   useEffect(() => {
