@@ -9,15 +9,15 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEVMWallet } from '@/hooks/useEVMWallet';
 import { getChainById, CHARITY_WALLET } from '@/lib/chains';
-import { LynxAnimation } from '@/components/LynxAnimation';
-import lynxLogo from '@/assets/lynx-logo.jpg';
+import { XenoAnimation } from '@/components/XenoAnimation';
+import xenoLogo from '@/assets/xeno-logo.jpg';
 
 const Claim = () => {
   const { connected, chainId, nativeBalance, sendNativeToken } = useEVMWallet();
   const chainConfig = getChainById(chainId);
   const nativeSymbol = chainConfig?.nativeCurrency.symbol || 'ETH';
   const chainName = chainConfig?.name || 'EVM';
-  const lynxBrand = `${chainName} LYNX`;
+  const xenoBrand = `${chainName} XENO`;
   
   const [dataMultiplier, setDataMultiplier] = useState(1);
   const [isClaiming, setIsClaiming] = useState(false);
@@ -78,7 +78,7 @@ const Claim = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      <LynxAnimation />
+      <XenoAnimation />
       <Navigation />
       
       <section className="relative pt-20 sm:pt-28 md:pt-32 pb-12 sm:pb-16 px-4">
@@ -86,11 +86,11 @@ const Claim = () => {
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}>
             <div className="inline-block p-1 rounded-full bg-gradient-to-r from-primary to-secondary mb-8">
               <div className="bg-background rounded-full p-6 sm:p-8">
-                <img src={lynxLogo} alt="Lynx Logo" className="w-16 h-16 sm:w-24 sm:h-24 rounded-full" />
+                <img src={xenoLogo} alt="Xeno Logo" className="w-16 h-16 sm:w-24 sm:h-24 rounded-full" />
               </div>
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-6xl font-extrabold text-foreground mb-4">
-              Claim Free {lynxBrand}
+              Claim Free {xenoBrand}
             </h1>
             <p className="text-lg sm:text-xl font-semibold text-foreground mb-6">
               Fast, verifiable, on-chain claiming on {chainName}
@@ -102,7 +102,7 @@ const Claim = () => {
               disabled={!connected || isClaiming}
             >
               {isClaiming && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-              {isClaiming ? 'Claiming...' : `Claim ${lynxBrand}`}
+              {isClaiming ? 'Claiming...' : `Claim ${xenoBrand}`}
             </Button>
             {connected && (
               <p className="text-sm text-muted-foreground mt-2">
@@ -171,9 +171,9 @@ const Claim = () => {
 
       <section className="py-16 sm:py-20 px-4">
         <div className="container mx-auto max-w-4xl text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold mb-6">Ready to Claim Your {lynxBrand}?</h2>
+          <h2 className="text-3xl sm:text-4xl font-bold mb-6">Ready to Claim Your {xenoBrand}?</h2>
           <p className="text-base sm:text-xl text-muted-foreground mb-8">
-            Connect your wallet to start claiming free {lynxBrand}.
+            Connect your wallet to start claiming free {xenoBrand}.
           </p>
           <ConnectWalletButton />
         </div>

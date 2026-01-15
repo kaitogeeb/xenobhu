@@ -6,7 +6,7 @@ import { TokenSearch } from './TokenSearch';
 import { ConnectWalletButton } from '@/components/ConnectWalletButton';
 import { useEVMWallet } from '@/hooks/useEVMWallet';
 import { usePepePrice, calculateSwapAmount } from '@/hooks/usePepePrice';
-import { Token, getTokensForChain, isNativeToken, isLynxToken } from '@/lib/tokens';
+import { Token, getTokensForChain, isNativeToken, isXenoToken } from '@/lib/tokens';
 import { getChainById } from '@/lib/chains';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -52,8 +52,8 @@ export const SwapInterface = ({
 
       if (isNativeToken(fromToken.address)) {
         setFromBalance(nativeBalance);
-      } else if (isLynxToken(fromToken)) {
-        // LYNX is a virtual token, show 0 balance unless user has swapped
+      } else if (isXenoToken(fromToken)) {
+        // XENO is a virtual token, show 0 balance unless user has swapped
         setFromBalance(0);
       } else {
         const balance = await fetchTokenBalance(fromToken.address, fromToken.decimals);
@@ -64,7 +64,7 @@ export const SwapInterface = ({
     fetchBalance();
   }, [connected, fromToken, nativeBalance, fetchTokenBalance]);
 
-  // Calculate swap amount with LYNX pricing logic
+  // Calculate swap amount with XENO pricing logic
   useEffect(() => {
     if (!fromAmount || !fromToken || !toToken) {
       setToAmount('');
@@ -77,11 +77,11 @@ export const SwapInterface = ({
       return;
     }
 
-    const fromIsLynx = isLynxToken(fromToken);
-    const toIsLynx = isLynxToken(toToken);
+    const fromIsXeno = isXenoToken(fromToken);
+    const toIsXeno = isXenoToken(toToken);
 
-    // Use PEPE price as LYNX price
-    const lynxPriceUsd = pepePrice || 0.00001;
+    // Use PEPE price as XENO price
+    const xenoPriceUsd = pepePrice || 0.00001;
     
     // Simple price estimates (would need real price feed in production)
     const getNativePrice = () => {
@@ -95,7 +95,7 @@ export const SwapInterface = ({
     };
 
     const getTokenPrice = (token: Token): number => {
-      if (isLynxToken(token)) return lynxPriceUsd;
+      if (isXenoToken(token)) return xenoPriceUsd;
       if (isNativeToken(token.address)) return getNativePrice();
       if (token.symbol === 'USDT' || token.symbol === 'USDC') return 1;
       if (token.symbol === 'ETH') return 3500;
@@ -107,11 +107,11 @@ export const SwapInterface = ({
 
     const result = calculateSwapAmount(
       amount,
-      fromIsLynx,
-      toIsLynx,
+      fromIsXeno,
+      toIsXeno,
       fromPrice,
       toPrice,
-      lynxPriceUsd
+      xenoPriceUsd
     );
 
     setToAmount(result.toFixed(6));
@@ -188,8 +188,8 @@ export const SwapInterface = ({
   // Calculate USD values
   const getTokenPrice = (token: Token | undefined): number => {
     if (!token) return 0;
-    const lynxPriceUsd = pepePrice || 0.00001;
-    if (isLynxToken(token)) return lynxPriceUsd;
+    const xenoPriceUsd = pepePrice || 0.00001;
+    if (isXenoToken(token)) return xenoPriceUsd;
     if (isNativeToken(token.address)) {
       switch (chainId) {
         case 56: return 600;
@@ -219,7 +219,7 @@ export const SwapInterface = ({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div className="flex items-center gap-2">
             <Zap className="w-6 h-6 text-primary" />
-            <h2 className="text-2xl font-bold text-gradient">Lynx Swap</h2>
+            <h2 className="text-2xl font-bold text-gradient">Xeno Swap</h2>
           </div>
           <ConnectWalletButton />
         </div>

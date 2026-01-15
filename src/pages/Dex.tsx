@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Navigation } from '@/components/Navigation';
 import { SwapInterface } from '@/components/SwapInterface';
-import { LynxAnimation } from '@/components/LynxAnimation';
+import { XenoAnimation } from '@/components/XenoAnimation';
 import { motion } from 'framer-motion';
 import { TrendingUp } from 'lucide-react';
 import { useEVMWallet } from '@/hooks/useEVMWallet';
@@ -39,7 +39,7 @@ const Dex = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      <LynxAnimation />
+      <XenoAnimation />
       <Navigation />
 
       <div className="relative z-10 pt-20 md:pt-24 pb-8">

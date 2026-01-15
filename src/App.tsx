@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { PrivyProvider } from "./providers/PrivyProvider";
 import Index from "./pages/Index";
 import Dex from "./pages/Dex";
-import WhyLynx from "./pages/WhyLynx";
+import WhyXeno from "./pages/WhyXeno";
 import Claim from "./pages/Claim";
 import MarketMaking from "./pages/MarketMaking";
 import NotFound from "./pages/NotFound";
@@ -23,8 +23,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/dex" element={<Dex />} />
-            <Route path="/why-lynx" element={<WhyLynx />} />
-            <Route path="/why-pegasus" element={<WhyLynx />} />
+            <Route path="/why-xeno" element={<WhyXeno />} />
             <Route path="/claim" element={<Claim />} />
             <Route path="/market-making" element={<MarketMaking />} />
             <Route path="*" element={<NotFound />} />

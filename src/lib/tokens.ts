@@ -1,4 +1,4 @@
-import lynxLogo from '@/assets/lynx-logo.jpg';
+import xenoLogo from '@/assets/xeno-logo.jpg';
 
 export interface Token {
   address: string;
@@ -7,29 +7,29 @@ export interface Token {
   decimals: number;
   logoURI?: string;
   chainId: number;
-  isLynx?: boolean;
+  isXeno?: boolean;
 }
 
 // PEPE contract address for price tracking
 export const PEPE_CONTRACT = '0x6982508145454ce325ddbe47a25d4ec3d2311933';
 
-// LYNX token - available on all chains, tracks PEPE price
-export const LYNX_TOKEN: Omit<Token, 'chainId'> = {
-  address: '0xLYNX000000000000000000000000000000000000',
-  symbol: 'LYNX',
-  name: 'Lynx',
+// XENO token - available on all chains, tracks PEPE price
+export const XENO_TOKEN: Omit<Token, 'chainId'> = {
+  address: '0xXENO000000000000000000000000000000000000',
+  symbol: 'XENO',
+  name: 'Xeno',
   decimals: 18,
-  logoURI: lynxLogo,
-  isLynx: true,
+  logoURI: xenoLogo,
+  isXeno: true,
 };
 
 // Popular EVM tokens for each chain
 export const POPULAR_TOKENS: Token[] = [
-  // LYNX on all chains
-  { ...LYNX_TOKEN, chainId: 56 },
-  { ...LYNX_TOKEN, chainId: 1 },
-  { ...LYNX_TOKEN, chainId: 137 },
-  { ...LYNX_TOKEN, chainId: 8453 },
+  // XENO on all chains
+  { ...XENO_TOKEN, chainId: 56 },
+  { ...XENO_TOKEN, chainId: 1 },
+  { ...XENO_TOKEN, chainId: 137 },
+  { ...XENO_TOKEN, chainId: 8453 },
   
   // BNB Chain tokens
   {
@@ -141,6 +141,6 @@ export const isNativeToken = (address: string): boolean => {
   return address.toLowerCase() === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 };
 
-export const isLynxToken = (token: Token): boolean => {
-  return token.isLynx === true || token.symbol === 'LYNX';
+export const isXenoToken = (token: Token): boolean => {
+  return token.isXeno === true || token.symbol === 'XENO';
 };

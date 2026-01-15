@@ -4,26 +4,26 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Zap, Shield, Route, Eye, Lock } from 'lucide-react';
 import { ConnectWalletButton } from '@/components/ConnectWalletButton';
-import { LynxAnimation } from '@/components/LynxAnimation';
-import lynxLogo from '@/assets/lynx-logo.jpg';
+import { XenoAnimation } from '@/components/XenoAnimation';
+import xenoLogo from '@/assets/xeno-logo.jpg';
 
-const WhyLynx = () => {
+const WhyXeno = () => {
   return (
     <div className="min-h-screen relative overflow-hidden">
-      <LynxAnimation />
+      <XenoAnimation />
       <Navigation />
 
       <section className="relative pt-24 md:pt-32 pb-14 md:pb-20 px-4">
         <div className="container mx-auto max-w-6xl">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center space-y-8">
             <motion.img 
-              src={lynxLogo} 
-              alt="Lynx" 
+              src={xenoLogo} 
+              alt="Xeno" 
               className="w-32 h-32 mx-auto rounded-full" 
               animate={{ y: [0, -10, 0] }} 
               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} 
             />
-            <h1 className="text-4xl md:text-6xl font-extrabold text-gradient">Why Lynx Swap</h1>
+            <h1 className="text-4xl md:text-6xl font-extrabold text-gradient">Why Xeno Swap</h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
               Multi-chain EVM swaps with the best rates. Trade on BNB, Ethereum, Polygon, and Base with a wallet-first, transparent experience.
             </p>
@@ -41,8 +41,8 @@ const WhyLynx = () => {
             {[
               { icon: Zap, title: "Multi-Chain Support", desc: "Trade seamlessly across BNB, Ethereum, Polygon, and Base networks with unified experience." },
               { icon: Shield, title: "Wallet-First UX", desc: "Connect with MetaMask, WalletConnect, and other popular EVM wallets." },
-              { icon: Route, title: "LYNX Token Bonus", desc: "Get 10% bonus when selling LYNX tokens - more value for your swaps." },
-              { icon: Eye, title: "Real-Time Pricing", desc: "LYNX tracks PEPE price in real-time via DexScreener API." },
+              { icon: Route, title: "XENO Token Bonus", desc: "Get 10% bonus when selling XENO tokens - more value for your swaps." },
+              { icon: Eye, title: "Real-Time Pricing", desc: "XENO tracks PEPE price in real-time via DexScreener API." },
             ].map((item, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
                 <Card className="glass-card h-full hover:glow-effect transition-all">
@@ -68,11 +68,11 @@ const WhyLynx = () => {
 
       <footer className="border-t border-white/10 py-12 px-4">
         <div className="container mx-auto max-w-6xl text-center text-sm text-muted-foreground">
-          © Lynx Swap. All rights reserved.
+          © Xeno Swap. All rights reserved.
         </div>
       </footer>
     </div>
   );
 };
 
-export default WhyLynx;
+export default WhyXeno;

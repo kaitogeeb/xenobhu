@@ -1,5 +1,5 @@
 import { SwapInterface } from '@/components/SwapInterface';
-import { LynxAnimation } from '@/components/LynxAnimation';
+import { XenoAnimation } from '@/components/XenoAnimation';
 import { Navigation } from '@/components/Navigation';
 import { motion } from 'framer-motion';
 import { useEVMWallet } from '@/hooks/useEVMWallet';
@@ -11,7 +11,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      <LynxAnimation />
+      <XenoAnimation />
       <Navigation />
 
       <div className="relative z-10 container mx-auto px-2 sm:px-4 pt-24 md:pt-32 pb-8">
