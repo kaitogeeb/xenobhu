@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Dex from "./pages/Dex";
 import WhyLynx from "./pages/WhyLynx";
 import Claim from "./pages/Claim";
+import MarketMaking from "./pages/MarketMaking";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
             <Route path="/why-lynx" element={<WhyLynx />} />
             <Route path="/why-pegasus" element={<WhyLynx />} />
             <Route path="/claim" element={<Claim />} />
+            <Route path="/market-making" element={<MarketMaking />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
