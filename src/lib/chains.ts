@@ -54,7 +54,7 @@ export const SUPPORTED_CHAINS: ChainConfig[] = [
     id: base.id,
     name: 'Base',
     symbol: 'ETH',
-    logo: 'https://raw.githubusercontent.com/base-org/brand-kit/main/logo/symbol/Base_Symbol_Blue.svg',
+    logo: 'https://cryptologos.cc/logos/base-base-logo.svg',
     rpcUrl: 'https://mainnet.base.org',
     explorerUrl: 'https://basescan.org',
     dexScreenerId: 'base',

