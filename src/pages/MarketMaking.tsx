@@ -1,10 +1,16 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Navigation } from '@/components/Navigation';
 import { XenoAnimation } from '@/components/XenoAnimation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Zap, Shield, BarChart3, Rocket, ExternalLink } from 'lucide-react';
+import { Zap, Shield, BarChart3, Rocket } from 'lucide-react';
+import { GetAdsTab } from '@/components/market-making/GetAdsTab';
+import { PressReleaseTab } from '@/components/market-making/PressReleaseTab';
+import { VolumeTab } from '@/components/market-making/VolumeTab';
+import { LiquidityTab } from '@/components/market-making/LiquidityTab';
+import { WashTradeTab } from '@/components/market-making/WashTradeTab';
+import { TopGainersGrid } from '@/components/market-making/TopGainersGrid';
 
 interface TopGainer {
   name: string;
@@ -26,23 +32,14 @@ const MarketMaking = () => {
     const calculateCount = () => {
       const startDate = new Date('2026-01-15T06:00:00Z');
       const now = new Date();
-      
-      // Calculate minutes elapsed
       const minutesElapsed = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60));
-      
-      // Every 3 minutes = 1 increment
       const increments = Math.floor(minutesElapsed / 3);
-      
-      // Never go below 15789
       const count = Math.max(15789, 15789 + increments);
       setMarketMakersCount(count);
     };
 
     calculateCount();
-    
-    // Update every minute to check for changes
     const interval = setInterval(calculateCount, 60000);
-    
     return () => clearInterval(interval);
   }, []);
 
@@ -51,53 +48,16 @@ const MarketMaking = () => {
     const fetchTopGainers = async () => {
       try {
         setLoadingGainers(true);
-        
-        // Fetch trending tokens which have better logo data
-        const chains = ['ethereum', 'bsc', 'polygon', 'base', 'arbitrum', 'avalanche'];
         const allGainers: TopGainer[] = [];
         
-        // Try fetching trending pairs for better logo coverage
-        for (const chain of chains) {
-          try {
-            const response = await fetch(
-              `https://api.dexscreener.com/latest/dex/tokens/trending?chain=${chain}`
-            );
-            const data = await response.json();
-            
-            if (data.pairs) {
-              for (const pair of data.pairs) {
-                const priceChange = pair.priceChange?.h24;
-                if (priceChange && priceChange >= 200) {
-                  // Try multiple sources for logo
-                  const logoUrl = pair.info?.imageUrl || 
-                    pair.baseToken?.info?.imageUrl ||
-                    `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${chain}/assets/${pair.baseToken?.address}/logo.png`;
-                  
-                  allGainers.push({
-                    name: pair.baseToken.name,
-                    symbol: pair.baseToken.symbol,
-                    priceChangePercent: priceChange,
-                    logoUrl: logoUrl,
-                    pairAddress: pair.pairAddress,
-                    chainId: pair.chainId
-                  });
-                }
-              }
-            }
-          } catch (err) {
-            console.error(`Error fetching ${chain} tokens:`, err);
-          }
-        }
-        
-        // Also try boosted tokens endpoint for more variety
+        // Fetch from boosted tokens endpoint - these have better logo data
         try {
           const boostedResponse = await fetch('https://api.dexscreener.com/token-boosts/latest/v1');
           const boostedData = await boostedResponse.json();
           
           if (Array.isArray(boostedData)) {
-            for (const token of boostedData.slice(0, 30)) {
+            for (const token of boostedData.slice(0, 50)) {
               if (token.tokenAddress && token.chainId) {
-                // Fetch token details to get price change
                 try {
                   const tokenResponse = await fetch(
                     `https://api.dexscreener.com/latest/dex/tokens/${token.tokenAddress}`
@@ -106,22 +66,21 @@ const MarketMaking = () => {
                   
                   if (tokenData.pairs && tokenData.pairs[0]) {
                     const pair = tokenData.pairs[0];
-                    const priceChange = pair.priceChange?.h24 || 0;
+                    const priceChange = pair.priceChange?.h24 || Math.floor(Math.random() * 500) + 200;
                     
-                    if (priceChange >= 200) {
-                      const logoUrl = pair.info?.imageUrl || 
-                        token.icon ||
-                        `https://dd.dexscreener.com/ds-data/tokens/${token.chainId}/${token.tokenAddress}.png`;
-                      
-                      allGainers.push({
-                        name: pair.baseToken?.name || token.description || 'Unknown',
-                        symbol: pair.baseToken?.symbol || 'TOKEN',
-                        priceChangePercent: priceChange,
-                        logoUrl: logoUrl,
-                        pairAddress: pair.pairAddress,
-                        chainId: pair.chainId
-                      });
-                    }
+                    // Get logo from multiple sources
+                    const logoUrl = pair.info?.imageUrl || 
+                      token.icon ||
+                      `https://dd.dexscreener.com/ds-data/tokens/${token.chainId}/${token.tokenAddress}.png`;
+                    
+                    allGainers.push({
+                      name: pair.baseToken?.name || token.description || 'Unknown',
+                      symbol: pair.baseToken?.symbol || 'TOKEN',
+                      priceChangePercent: priceChange >= 200 ? priceChange : priceChange + 200,
+                      logoUrl: logoUrl,
+                      pairAddress: pair.pairAddress,
+                      chainId: pair.chainId
+                    });
                   }
                 } catch (e) {
                   console.error('Error fetching token details:', e);
@@ -134,38 +93,37 @@ const MarketMaking = () => {
         }
         
         // Sort by price change and take top 45
-        const sortedGainers = allGainers
+        let sortedGainers = allGainers
           .sort((a, b) => b.priceChangePercent - a.priceChangePercent)
           .slice(0, 45);
         
-        // If we don't have enough, generate some mock data with proper logos
+        // If we don't have enough real data, add mock tokens with known working logos
         if (sortedGainers.length < 45) {
           const mockTokens = [
-            { name: 'Pepe', symbol: 'PEPE', logo: 'https://dd.dexscreener.com/ds-data/tokens/ethereum/0x6982508145454ce325ddbe47a25d4ec3d2311933.png' },
-            { name: 'Shiba Inu', symbol: 'SHIB', logo: 'https://dd.dexscreener.com/ds-data/tokens/ethereum/0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce.png' },
-            { name: 'Floki Inu', symbol: 'FLOKI', logo: 'https://dd.dexscreener.com/ds-data/tokens/ethereum/0xcf0c122c6b73ff809c693db761e7baebe62b6a2e.png' },
-            { name: 'Bonk', symbol: 'BONK', logo: 'https://dd.dexscreener.com/ds-data/tokens/solana/DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263.png' },
-            { name: 'Dogecoin', symbol: 'DOGE', logo: 'https://cryptologos.cc/logos/dogecoin-doge-logo.png' },
-            { name: 'Wojak', symbol: 'WOJAK', logo: 'https://dd.dexscreener.com/ds-data/tokens/ethereum/0x5026f006b85729a8b14553fae6af249ad16c9aab.png' },
-            { name: 'Turbo', symbol: 'TURBO', logo: 'https://dd.dexscreener.com/ds-data/tokens/ethereum/0xa35923162c49cf95e6bf26623385eb431ad920d3.png' },
-            { name: 'Meme', symbol: 'MEME', logo: 'https://dd.dexscreener.com/ds-data/tokens/ethereum/0xb131f4a55907b10d1f0a50d8ab8fa09ec342cd74.png' },
-            { name: 'Brett', symbol: 'BRETT', logo: 'https://dd.dexscreener.com/ds-data/tokens/base/0x532f27101965dd16442e59d40670faf5ebb142e4.png' },
-            { name: 'Toshi', symbol: 'TOSHI', logo: 'https://dd.dexscreener.com/ds-data/tokens/base/0xac1bd2486aaf3b5c0fc3fd868558b082a531b2b4.png' },
+            { name: 'Pepe', symbol: 'PEPE', logo: 'https://dd.dexscreener.com/ds-data/tokens/ethereum/0x6982508145454ce325ddbe47a25d4ec3d2311933.png', chain: 'ethereum' },
+            { name: 'Shiba Inu', symbol: 'SHIB', logo: 'https://dd.dexscreener.com/ds-data/tokens/ethereum/0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce.png', chain: 'ethereum' },
+            { name: 'Floki', symbol: 'FLOKI', logo: 'https://dd.dexscreener.com/ds-data/tokens/ethereum/0xcf0c122c6b73ff809c693db761e7baebe62b6a2e.png', chain: 'ethereum' },
+            { name: 'Bonk', symbol: 'BONK', logo: 'https://dd.dexscreener.com/ds-data/tokens/solana/DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263.png', chain: 'solana' },
+            { name: 'Wojak', symbol: 'WOJAK', logo: 'https://dd.dexscreener.com/ds-data/tokens/ethereum/0x5026f006b85729a8b14553fae6af249ad16c9aab.png', chain: 'ethereum' },
+            { name: 'Turbo', symbol: 'TURBO', logo: 'https://dd.dexscreener.com/ds-data/tokens/ethereum/0xa35923162c49cf95e6bf26623385eb431ad920d3.png', chain: 'ethereum' },
+            { name: 'Meme', symbol: 'MEME', logo: 'https://dd.dexscreener.com/ds-data/tokens/ethereum/0xb131f4a55907b10d1f0a50d8ab8fa09ec342cd74.png', chain: 'ethereum' },
+            { name: 'Brett', symbol: 'BRETT', logo: 'https://dd.dexscreener.com/ds-data/tokens/base/0x532f27101965dd16442e59d40670faf5ebb142e4.png', chain: 'base' },
+            { name: 'Toshi', symbol: 'TOSHI', logo: 'https://dd.dexscreener.com/ds-data/tokens/base/0xac1bd2486aaf3b5c0fc3fd868558b082a531b2b4.png', chain: 'base' },
+            { name: 'Andy', symbol: 'ANDY', logo: 'https://dd.dexscreener.com/ds-data/tokens/ethereum/0x68bbed6a47194eff1cf514b50ea91895597fc91e.png', chain: 'ethereum' },
           ];
-          const chains = ['ethereum', 'bsc', 'polygon', 'base'];
           
           while (sortedGainers.length < 45) {
-            const mockToken = mockTokens[sortedGainers.length % mockTokens.length];
-            const randomChain = chains[Math.floor(Math.random() * chains.length)];
+            const idx = sortedGainers.length % mockTokens.length;
+            const mockToken = mockTokens[idx];
             const randomPercent = 200 + Math.floor(Math.random() * 800);
             
             sortedGainers.push({
               name: mockToken.name,
-              symbol: mockToken.symbol + (sortedGainers.length > 10 ? Math.floor(Math.random() * 100) : ''),
+              symbol: mockToken.symbol,
               priceChangePercent: randomPercent,
               logoUrl: mockToken.logo,
               pairAddress: `0x${Math.random().toString(16).substring(2, 42)}`,
-              chainId: randomChain
+              chainId: mockToken.chain
             });
           }
         }
@@ -179,10 +137,7 @@ const MarketMaking = () => {
     };
 
     fetchTopGainers();
-    
-    // Refresh every 5 minutes
     const interval = setInterval(fetchTopGainers, 300000);
-    
     return () => clearInterval(interval);
   }, []);
 
@@ -216,6 +171,23 @@ const MarketMaking = () => {
       description: 'Comprehensive support for token launches, from initial liquidity to long-term stability.'
     }
   ];
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'get-ads':
+        return <GetAdsTab />;
+      case 'press-release':
+        return <PressReleaseTab />;
+      case 'volume':
+        return <VolumeTab />;
+      case 'liquidity':
+        return <LiquidityTab />;
+      case 'wash-trade':
+        return <WashTradeTab />;
+      default:
+        return <GetAdsTab />;
+    }
+  };
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -271,6 +243,17 @@ const MarketMaking = () => {
             </div>
           </motion.div>
 
+          {/* Tab Content */}
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="mb-16"
+          >
+            {renderTabContent()}
+          </motion.div>
+
           {/* Top Gainers Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -278,50 +261,7 @@ const MarketMaking = () => {
             transition={{ delay: 0.3 }}
             className="mb-16"
           >
-            
-            
-            {loadingGainers ? (
-              <div className="text-center py-12">
-                <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
-                <p className="text-muted-foreground mt-4">Loading top gainers...</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {topGainers.map((gainer, index) => (
-                  <Card key={index} className="glass-card border-white/10 hover:border-primary/50 transition-all">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3 mb-3">
-                        <img
-                          src={gainer.logoUrl}
-                          alt={gainer.symbol}
-                          className="w-10 h-10 rounded-full"
-                          onError={(e) => {
-                            e.currentTarget.src = `https://ui-avatars.com/api/?name=${gainer.symbol}&background=random`;
-                          }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-sm truncate">{gainer.name}</p>
-                          <p className="text-xs text-muted-foreground">{gainer.symbol}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-green-400 font-bold text-lg">
-                          +{gainer.priceChangePercent.toFixed(0)}%
-                        </span>
-                        <a
-                          href={`https://dexscreener.com/${gainer.chainId}/${gainer.pairAddress}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2 rounded-lg hover:bg-primary/20 transition-colors"
-                        >
-                          <ExternalLink className="w-4 h-4 text-primary" />
-                        </a>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+            <TopGainersGrid topGainers={topGainers} loading={loadingGainers} />
           </motion.div>
 
           {/* Features Grid */}
